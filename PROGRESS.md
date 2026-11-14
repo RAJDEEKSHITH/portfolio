@@ -10,28 +10,51 @@ Each step lists the `IMPLEMENTATION.md` sections to read. Read only those.
 
 _Overwrite this section at the end of every step._
 
-- **Last completed step:** Step 8 — Footer + SocialLinks
+- **Last completed step:** Step 9 — Shared UI primitives
 - **What was done:**
-  - Added `src/components/ui/SocialLinks.tsx` (§4.8): a wrapping `ul` of round icon links, built from `socials.ts` via `getSocial()`. The `aria-label` and `title` come from the data `label` or the registry label. `http` links get `target="_blank" rel="noopener noreferrer"`; `mailto:` gets neither. Icons are `aria-hidden`.
-  - Added `src/components/layout/Footer.tsx` (§4.7): `border-t`, with `© {year} {site.name}` and `<SocialLinks size="sm" />`. It's one row from `sm` up, and stacked and centred below that (socials above the ©). Nothing else.
-  - `RootLayout` renders `<Footer />`, so the layout is now complete: skip link, Header, main, Footer.
-  - `src/lib/validate.ts` now accepts its own hot updates in dev (see Decisions).
-- **Files created/changed:** new `src/components/ui/SocialLinks.tsx` and `src/components/layout/Footer.tsx`; changed `src/components/layout/RootLayout.tsx` and `src/lib/validate.ts`.
+  - New in `src/components/ui/`:
+    - `Section.tsx` (§5.1): copied from the spec as written.
+    - `PageHeader.tsx` (§5.2): takes `title`, plus optional `subtitle` and `className`. Renders a `<header>` with `mb-10 sm:mb-12`, then the `<h1>` at page-title scale (plus `break-words`, so long titles wrap at 320px), then an optional subtitle `<p>` at body scale with `mt-3`.
+    - `Reveal.tsx` (§5.3): copied from the spec as written.
+    - `TechChip.tsx` (§5.4), with one change (see Decisions).
+    - `StatusBadge.tsx` (§5.5): copied from the spec as written.
+    - `ExternalLink.tsx` (§5.6): extends `ComponentProps<"a">` and adds `target`/`rel` only when `href` starts with `http`. Caller props are spread after those defaults, so a caller can override them. The `LuArrowUpRight` (`size-3.5`) nudges up and right on hover (`transition-transform duration-200`). It has the standard focus ring.
+    - `CopyEmail.tsx` (§5.7): a `rounded-lg` bordered button showing `site.email` (`truncate`, inside `min-w-0` parents), and a copy icon that crossfades to a check (`text-accent`) using the same `[grid-area:1/1]` technique as ThemeToggle, opacity/scale only, 200ms. A visually hidden `aria-live="polite"` span says "Email copied". The button has `aria-label="Copy email address {email}"`, which contains the visible text (WCAG 2.5.3), and `title="Copy email"`. If `copy()` returns false, it falls back to `window.location.href = "mailto:…"`.
+  - New `src/hooks/useCopyToClipboard.ts`: returns `{ copied, copy }`. `copy(text)` resolves `true` or `false`: `false` when `navigator.clipboard?.writeText` is missing or rejects. `copied` resets after 1500ms. The timer is cleared on re-copy and on unmount.
+  - **The stub pages now use `PageHeader`** (Experience, Projects, Resume and NotFound), replacing their bare `<h1>`. Those uses are permanent.
+  - **`Home.tsx` holds a TEMPORARY Step 9 preview:** Reveal steps 0 to 3, StatusBadge, ExternalLink (http and relative), CopyEmail, and a Section with a "View all" action and every skill as a TechChip. **Step 12 replaces all of it.**
+  - Deleted `src/components/ui/.gitkeep` and `src/hooks/.gitkeep`.
+- **Files created/changed:**
+  - New: the 7 UI files above and `src/hooks/useCopyToClipboard.ts`.
+  - Changed: `src/pages/{Home,Experience,Projects,Resume,NotFound}.tsx`.
 - **Verified:**
   - `pnpm build` and `pnpm lint` are clean.
-  - **Headless Chrome, 14 checks, all pass in production and dev (StrictMode):**
-    - **Every width:** at 320, 375, 414 and 639px the footer is stacked and centred, socials above the ©. At 640, 768, 1024, 1440 and 1920px it's one row, © left and socials right. At every width the socials stay on one row, the footer sits at the bottom of the viewport on a short page, there's a 1px top border, and no horizontal overflow.
-    - **Data:** all 7 socials appear in data order, with the right labels and hrefs.
-    - **Icons:** each link's SVG path is compared with the react-icons export rendered separately in Node, and every one is the right icon.
-    - **Link attributes:** `target`/`rel` are correct for http and absent for `mailto:`.
-    - **Size and focus:** every icon link is 36×36, and Tab focus shows the 2px ring.
-  - **Live editing while `pnpm dev` runs (5 checks, all pass):**
-    - Appending `{ platform: "foo", url }` to `socials.ts` showed an 8th link with the **generic FaLink icon** and the label "Link".
-    - Deleting the youtube line removed it.
-    - Restoring the file brought back the original 7.
-    - All of that happened as a **hot update, with no page reload**, and the validator re-ran each time; the unknown-platform warning appeared and then cleared. The file was restored, and `git status` confirms it matches the committed version.
-  - **Screenshots:** 320 and 1440px in light and dark all look right. On desktop the icon row lines up with the theme toggle above.
-  - **Console:** production logged nothing. Dev showed only the expected `[content]` warning. No validator or HMR code is in `dist`.
+  - **Headless Chrome, 19 checks, all pass in production and dev (StrictMode):**
+    - **Every width (320, 375, 414, 768, 1024, 1440 and 1920px):** no horizontal overflow, and every chip and the email button stay inside the viewport. 18 chips render; "Zustand" is text-only, as expected, and the rest have icons.
+    - **Long emails:** at 320px a 66-character email truncates with an ellipsis.
+    - **ExternalLink:** `target`/`rel` are set for http and absent for `/projects`. The arrow is `aria-hidden`.
+    - **CopyEmail:**
+      - the clipboard gets `you@example.com`;
+      - the copy icon goes to opacity 0 and the check to 1;
+      - the live region reads "Email copied";
+      - after 1.5s everything resets, and the live region is empty again.
+    - **CopyEmail fallbacks:** with `writeText` rejecting, and with no `navigator.clipboard` at all, a navigation to `mailto:you@example.com` is requested and nothing claims "copied". In headless Chrome the second `mailto:` launch logs "user gesture is required"; that's Chrome throttling external-protocol launches, not the code. The navigation was requested both times.
+    - **Focus:** Tab reaches Website, the email button and "View all", and each shows the 2px ring with a 2px offset.
+    - **Reduced motion:** the ping is `display: none` while the static dot still shows, and Reveal's animation is `none`.
+    - **Normal motion:** the ping animates, and the Reveal delays are 0, 60, 120 and 180ms.
+    - **PageHeader:** each of `/experience`, `/projects`, `/resume` and `/nope` has exactly one `h1` at page-title scale, a bottom margin of 48px at 1440px, and the right tab title.
+  - **Screenshots:** 320 and 1440px in light and dark look right.
+  - **Console:**
+    - production: nothing from the app;
+    - dev: only the expected `[content]` Drive-link warning, with no key warnings and no React errors.
+- **⚠ Bundle is over budget: 131.3 KB gzip initial JS (392 KB raw), against the ≤ 130 KB budget.**
+  - Measured: without the TechChip preview it's 115.6 KB, so `TECH_ICONS` costs 15.7 KB gzip once any eager page renders a TechChip. The rest of Step 9 added about 1.4 KB.
+  - **This is real, not caused by the preview:** the Step 12 Home page renders skills as TechChips, so it will land at about 131 KB too.
+  - **Owner decision needed before Step 12 or 15.** Options:
+    - (a) raise the budget to about 140 KB;
+    - (b) lazy-load the skills icons in their own chunk. They'd pop in after first paint unless the space is reserved; chips keep their size if the icon slot is reserved;
+    - (c) make Home a lazy route as well. That splits the code but doesn't reduce what the landing page downloads.
+  - The owner has said the registries must not be trimmed, so I haven't touched them. I'd suggest (a).
 - **Owner decisions, recorded after Step 8. These are final; don't reopen them:**
   1. **All three Step 8 deviations are accepted, and the docs now match the code:**
      - 36px footer icon links: §4.8 updated, with both sizes on `size-9`;
@@ -39,7 +62,12 @@ _Overwrite this section at the end of every step._
      - the dev hot-update change in `validate.ts`: documented in §3.10.
   2. **Bundle budget raised to ≤ 130 KB gzip for the initial JS** (option a), in §8 and the Step 15 "Done when". **Keep the full `SOCIAL_ICONS` and `TECH_ICONS` registries**, so the owner can add socials and skills freely. Step 15 must not trim them. The current size of 114.2 KB is within budget.
   3. **The 320px nav keeps the horizontal-scroll fallback.** The owner left this one to me. Tighter gaps would fit with only about 1px to spare and break on any label or font change, while the fallback is what §4.5 prescribes, scales to any number of nav items, and has been tested with the keyboard. §4.5 now documents the real numbers (about 307px needed against 280px available at 320px) and the fallback's exact classes and `onFocus`, replacing the old "4 labels + toggle fit" claim.
-- **Decisions / deviations from spec** (all now reflected in IMPLEMENTATION.md):
+- **Decisions / deviations from spec** (Step 8 and earlier are reflected in IMPLEMENTATION.md; Step 9's aren't yet):
+  - From Step 9:
+    - **TechChip reads `TECH_ICONS[toKey(name)]` directly instead of calling `getTechIcon(name)`.** The spec code fails `pnpm lint` with `react-hooks/static-components` ("component is created during render"), because the rule can't see that a function's return value is a stable, module-level component, while a property read passes. That's the same pattern SocialLinks already uses with `meta.icon`. The behaviour is the same. `getTechIcon` is still exported; nothing uses it now.
+    - **ExternalLink has the standard focus ring,** which §5.6 didn't list. CopyEmail's icon crossfade, `aria-label` and `title` are my own choices, since §5.7 doesn't specify them.
+    - **`useCopyToClipboard().copy` returns `Promise<boolean>`,** so CopyEmail can run the `mailto:` fallback.
+    - If you accept these, §5.4 to §5.7 can be updated to match. I haven't edited IMPLEMENTATION.md.
   - **The `sm` icon links are `size-9` (36px), not `size-8`.** This meets CLAUDE.md's ≥ `size-9` rule and §9's ≥ 36px tap targets. `sm` and `md` differ only in icon size (`size-4` vs `size-4.5`).
   - **SocialLinks reads `socials` through its declared type** (`const links: readonly Social[] = socials`). The original §4.8 code failed with `TS2339: Property 'label' does not exist` (checked).
   - The `{...(!isMail && {...})}` spread became an `external` object, with the same behaviour.
@@ -67,9 +95,10 @@ _Overwrite this section at the end of every step._
 - **Known issues / TODO:**
   - **The placeholder data points at files that don't exist yet:** `site.avatar` (`/avatar.webp`) and project image `/projects/project-one.webp`. Once Steps 11 and 12 render them they'll 404, showing broken images and console errors. Either add the files, or set `avatar: null` and drop `image` until real assets exist.
   - **Expected dev warning:** until a real Drive link is in `site.resume.driveUrl`, every dev page load shows one `[content]` warning about it, and the Step 13 Resume page will show "Resume coming soon." That's intended, but it means "no console warnings in dev" (Definition of done) only holds once the link is pasted. Treat that single warning as expected when checking later steps.
-  - **Bundle: 114.2 KB gzip initial JS (350 KB raw), within the new ≤ 130 KB budget.** It was 103.1 after Step 7; the full social registry added 11.1 KB, because string lookups ship all 19 icons, with CodeChef at 7.4 KB and Kaggle at 3.6 KB of paths. **Watch Steps 9 and 12:** `TechChip` on the eager Home page will make all of `TECH_ICONS` reachable (about 35 entries, for example PostgreSQL 5.3 KB and React 3.0 KB of paths), which could cost another 10 KB or more of gzip. Record the size after each of those steps. If it gets close to 130, raise it with the owner before Step 15 instead of trimming the registries.
+  - **Bundle: 131.3 KB gzip, over the 130 KB budget.** See the ⚠ entry above. It was 114.2 after Step 8 and 115.6 with Step 9 minus the TechChip preview; `TECH_ICONS` adds 15.7 KB. Owner decision needed.
   - At 320px, after you navigate to `/resume`, the active "Resume" link stays partly scrolled out of view, since nothing scrolls the nav on route change, only on focus. **Fix scheduled in Step 16** (scroll the active link into view on route change).
   - **The `[content]` warning prints once per full page load, and again after each hot data edit** (the validator re-runs on new content). Client-side navigation doesn't re-run it.
+  - **New, found in Step 9 and present since Step 8: at 320px in desktop Chrome the footer's socials wrap to 2 rows** (6 icons, then the email icon on its own). The classic 15px scrollbar gutter (`scrollbar-gutter: stable`) leaves 265px of content width for 276px of icons (7 × 36px plus 6 × 4px gaps). Phones use overlay scrollbars, so with mobile emulation it's one row (276px fits exactly). Step 8's "one row at every width" was probably measured without the gutter. It's harmless, because the row is `flex-wrap`, but it doesn't look great. **Look at it in Step 16.** For example, `gap-0` below `sm` gives 252px and fits, or accept the wrap. Not changed.
   - At 1440px the footer's full-width top border stops about 15px short of the right edge, at the space `scrollbar-gutter: stable` (§2.4) reserves for the scrollbar. **Fix scheduled in Step 16:** the border moves onto an inner element inside the footer's Container, so it matches the text width and never reaches the gutter.
   - Git on Windows warns about LF→CRLF. If you want LF everywhere (the Prettier default), add `.gitattributes` with `* text=auto eol=lf`. I didn't add it; ask if you want it.
   - Delete the `.gitkeep` files as real files land in each folder.
@@ -124,7 +153,7 @@ _Overwrite this section at the end of every step._
 
 ### Components & pages
 
-- [ ] **Step 9: Shared UI primitives**
+- [x] **Step 9: Shared UI primitives**
   Read: §5.1 to §5.7
   `Section`, `PageHeader`, `Reveal`, `TechChip`, `StatusBadge`, `ExternalLink`, `CopyEmail` + `useCopyToClipboard`.
   **Done when:** each component renders on a stub page without errors; copy-email shows the copied state and announces it; StatusBadge ping is hidden with reduced motion.
