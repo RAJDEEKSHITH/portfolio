@@ -10,32 +10,43 @@ Each step lists the `IMPLEMENTATION.md` sections to read. Read only those.
 
 _Overwrite this section at the end of every step._
 
-- **Last completed step:** Step 7 — Header + ThemeToggle
+- **Last completed step:** Step 8 — Footer + SocialLinks
 - **What was done:**
-  - Added `src/components/layout/Header.tsx` (§4.5): a sticky header with `bg-bg/80` and `backdrop-blur-md`, `h-14` inside `Container`. It has `<nav aria-label="Primary">` with `NavLink`s from `navigation.ts` (`end` on `/`; active `font-medium text-fg`, others `text-muted hover:text-fg`) and the toggle on the right.
-  - Added `src/components/ui/ThemeToggle.tsx` (§4.6): a 36×36 round button with a dynamic `aria-label`. `LuSun` and `LuMoon` are stacked in one grid cell and crossfade and rotate over 300ms. It shows the **current** theme: the sun in light and the moon in dark.
-  - `RootLayout` renders `<Header />`. The footer slot (`{/* <Footer /> — Step 8 */}`) stays for Step 8.
-- **Files created/changed:** new `src/components/layout/Header.tsx` and `src/components/ui/ThemeToggle.tsx`; changed `src/components/layout/RootLayout.tsx` (Header, plus the skip link's focus ring).
+  - Added `src/components/ui/SocialLinks.tsx` (§4.8): a wrapping `ul` of round icon links, built from `socials.ts` via `getSocial()`. The `aria-label` and `title` come from the data `label` or the registry label. `http` links get `target="_blank" rel="noopener noreferrer"`; `mailto:` gets neither. Icons are `aria-hidden`.
+  - Added `src/components/layout/Footer.tsx` (§4.7): `border-t`, with `© {year} {site.name}` and `<SocialLinks size="sm" />`. It's one row from `sm` up, and stacked and centred below that (socials above the ©). Nothing else.
+  - `RootLayout` renders `<Footer />`, so the layout is now complete: skip link, Header, main, Footer.
+  - `src/lib/validate.ts` now accepts its own hot updates in dev (see Decisions).
+- **Files created/changed:** new `src/components/ui/SocialLinks.tsx` and `src/components/layout/Footer.tsx`; changed `src/components/layout/RootLayout.tsx` and `src/lib/validate.ts`.
 - **Verified:**
-  - `pnpm build` and `pnpm lint` are clean, and there's no `transition-all` anywhere in `src`.
-  - **Headless Chrome, 20 checks, all pass in production and dev (StrictMode):**
-    - **Every width:** at 320, 375, 414, 768, 1024, 1440 and 1920px the header is one line and 56px tall, with no horizontal page overflow. The nav never runs under the toggle, and the toggle is always 36×36. From 375px up, the nav fits without scrolling.
-    - **320px keyboard:** Tabbing through the nav scrolls each link fully into view, with its 4px focus ring inside the scroll box. The page itself doesn't scroll (stays at 600px), and the scrollbar is hidden.
-    - **Active state, by clicking the real nav links:** only the current link has `aria-current="page"` and is `fg`/500 weight; the others are muted/400. Home is not active on other pages. Each click also lands at the top of the page, which confirms Step 6's scroll reset with real links.
-    - **Sticky:** after scrolling 1500px the header is still at `top: 0`, with `blur(12px)` and an 80%-alpha background.
-    - **Toggle:** the `aria-label` and icon are correct in both themes. The crossfade really animates (10 in-between opacity frames over about 450ms). Theme colours (a nav link and the page background) already have their final value on the first frame, so there's no fade.
-    - **Keyboard:** Tab goes skip link → Home → Experience → Projects → Resume → toggle, and every stop shows a 2px `solid` focus ring.
-  - **Screenshots:** I captured and looked at 320 and 1440px in light and dark, plus 320px dark with "Resume" keyboard-focused (ring fully visible, nav scrolled). Production console: nothing. Dev: only the expected `[content]` warning.
+  - `pnpm build` and `pnpm lint` are clean.
+  - **Headless Chrome, 14 checks, all pass in production and dev (StrictMode):**
+    - **Every width:** at 320, 375, 414 and 639px the footer is stacked and centred, socials above the ©. At 640, 768, 1024, 1440 and 1920px it's one row, © left and socials right. At every width the socials stay on one row, the footer sits at the bottom of the viewport on a short page, there's a 1px top border, and no horizontal overflow.
+    - **Data:** all 7 socials appear in data order, with the right labels and hrefs.
+    - **Icons:** each link's SVG path is compared with the react-icons export rendered separately in Node, and every one is the right icon.
+    - **Link attributes:** `target`/`rel` are correct for http and absent for `mailto:`.
+    - **Size and focus:** every icon link is 36×36, and Tab focus shows the 2px ring.
+  - **Live editing while `pnpm dev` runs (5 checks, all pass):**
+    - Appending `{ platform: "foo", url }` to `socials.ts` showed an 8th link with the **generic FaLink icon** and the label "Link".
+    - Deleting the youtube line removed it.
+    - Restoring the file brought back the original 7.
+    - All of that happened as a **hot update, with no page reload**, and the validator re-ran each time; the unknown-platform warning appeared and then cleared. The file was restored, and `git status` confirms it matches the committed version.
+  - **Screenshots:** 320 and 1440px in light and dark all look right. On desktop the icon row lines up with the theme toggle above.
+  - **Console:** production logged nothing. Dev showed only the expected `[content]` warning. No validator or HMR code is in `dist`.
 - **Decisions / deviations from spec:**
-  - **The nav doesn't fit at 320px, so the spec's own fallback is in use.** §4.5 says 4 labels plus the toggle fit at 320px, but measured they need about 307px of the 280px available (links 207px, gaps 3×16px, header gap 16px, toggle 36px). At 375px they fit with 44px to spare. As §4.5 prescribes for overflow, the `ul` is `overflow-x-auto` with a hidden scrollbar (`[scrollbar-width:none]` plus `[&::-webkit-scrollbar]:hidden`), never a hamburger. **At 320px "Resume" shows cut off as "Resu" until you swipe or Tab to it.** Three small additions make that fallback work:
-    - `p-1 -mx-1 scroll-px-1` on the `ul`, so a scroll container doesn't clip the 4px focus ring;
-    - `shrink-0` on the toggle, which was being squeezed to 33px;
-    - an `onFocus` on each link calling `scrollIntoView({ block: "nearest", inline: "nearest" })`. Chrome won't scroll a partly visible focused element into view on its own; this was measured, and without it "Resume" stayed clipped.
-    - **Your call:** the alternative is tighter spacing at the base size only (`gap-2` between links and `gap-3` before the toggle). It fits at 320px, but with about 1px to spare, so any label or font change would break it. Tell me if you prefer that.
-  - **The hairline border once scrolled (optional in §4.5) is not built.** It's optional, not in "Done when", and would add an IntersectionObserver plus state. Ask if you want it.
-  - **The skip link now has the standard focus ring** (`focus-visible:outline-2 outline-offset-2 outline-fg`). §4.3's classes left it with the browser default ring, and CLAUDE.md requires the ring on every interactive element.
-  - **The crossfade works despite `.no-transitions`.** `applyTheme()` forces its style flush before React swaps the icon classes, and `.no-transitions` comes off in the next animation frame, before that frame's style recalculation. So the icons animate while the theme colours switch instantly. Don't add a forced reflow (for example reading `offsetHeight`) after `setTheme`, or the crossfade will stop.
-  - Small additions in `Header`: `min-w-0` on `<nav>` (CLAUDE.md: flex children holding text) and `whitespace-nowrap` on links. The toggle icons use `size-4.5` (18px), matching the md social icon size in §4.8.
+  - **The `sm` icon links are `size-9` (36px), not `size-8`.** §4.8's `sm` uses `size-8` (32px), but CLAUDE.md requires icon links to be at least `size-9` and §9 requires tap targets of at least 36px. Now `sm` and `md` differ only in icon size (`size-4` vs `size-4.5`, the canonical form of `size-[18px]`).
+  - **SocialLinks reads `socials` through its declared type** (`const links: readonly Social[] = socials`). With §4.8's code verbatim, TypeScript fails with `TS2339: Property 'label' does not exist` (checked), because no placeholder entry sets `label` and `satisfies` keeps the literal shapes.
+  - `{...(!isMail && {...})}` became an `external` object (`{}` for mailto, otherwise `target`/`rel`) spread onto the `<a>`. The behaviour is the same and it reads more clearly.
+  - **`validate.ts` accepts its own hot updates** (`import.meta.hot.accept((next) => next?.validateContent())`). It's not in the spec. Without it, editing **any** `src/data/*` file did a full page reload in dev: `validate.ts` imports every data file but is loaded from `main.tsx`, which can't hot-reload. Now data edits are hot updates and the warning refreshes live. It's dev-only, and Vite removes `import.meta.hot` from builds.
+  - From Step 7:
+    - **The nav doesn't fit at 320px, so the spec's own fallback is in use.** §4.5 says 4 labels plus the toggle fit at 320px, but measured they need about 307px of the 280px available (links 207px, gaps 3×16px, header gap 16px, toggle 36px). At 375px they fit with 44px to spare. As §4.5 prescribes for overflow, the `ul` is `overflow-x-auto` with a hidden scrollbar (`[scrollbar-width:none]` plus `[&::-webkit-scrollbar]:hidden`), never a hamburger. **At 320px "Resume" shows cut off as "Resu" until you swipe or Tab to it.** Three small additions make that fallback work:
+      - `p-1 -mx-1 scroll-px-1` on the `ul`, so a scroll container doesn't clip the 4px focus ring;
+      - `shrink-0` on the toggle, which was being squeezed to 33px;
+      - an `onFocus` on each link calling `scrollIntoView({ block: "nearest", inline: "nearest" })`. Chrome won't scroll a partly visible focused element into view on its own; this was measured, and without it "Resume" stayed clipped.
+      - **Owner's call, still open:** the alternative is tighter spacing at the base size only (`gap-2` between links and `gap-3` before the toggle). It fits at 320px, but with about 1px to spare, so any label or font change would break it.
+    - **The hairline border once scrolled (optional in §4.5) is not built.** Ask if you want it.
+    - **The skip link has the standard focus ring** (`focus-visible:outline-2 outline-offset-2 outline-fg`). §4.3's classes left it with the browser default ring.
+    - **The crossfade works despite `.no-transitions`.** `applyTheme()` forces its style flush before React swaps the icon classes, and `.no-transitions` comes off in the next animation frame, before that frame's style recalculation. Don't add a forced reflow (for example reading `offsetHeight`) after `setTheme`, or the crossfade will stop.
+    - In `Header`: `min-w-0` on `<nav>` and `whitespace-nowrap` on links. The toggle icons use `size-4.5` (18px).
   - From Step 6: `HydrateFallback: () => null` on the root route silences React Router's "No HydrateFallback" warning without changing behaviour (not added to §4.1). Two `<title>` tags end up in `<head>`; React's comes first, so the tab title is always right. The stubs have no `<meta name="description">` yet; add them in Steps 10 to 13. `errorElement` shows "404" even when a page crashes, as the spec has it.
   - **`src/lib/resume.ts` was created in Step 4, before Step 13.** The validator uses `getDriveId`. Step 13 only needs to build the page that uses it.
   - **The resume iframe uses a wrapper, as agreed with the owner (§6.5).** `mt-8` and `bg-subtle` sit on a wrapper `div`, because an iframe's own background would hide the "Loading preview…" text behind it.
@@ -49,9 +60,18 @@ _Overwrite this section at the end of every step._
 - **Known issues / TODO:**
   - **The placeholder data points at files that don't exist yet:** `site.avatar` (`/avatar.webp`) and project image `/projects/project-one.webp`. Once Steps 11 and 12 render them they'll 404, showing broken images and console errors. Either add the files, or set `avatar: null` and drop `image` until real assets exist.
   - **Expected dev warning:** until a real Drive link is in `site.resume.driveUrl`, every dev page load shows one `[content]` warning about it, and the Step 13 Resume page will show "Resume coming soon." That's intended, but it means "no console warnings in dev" (Definition of done) only holds once the link is pasted. Treat that single warning as expected when checking later steps.
-  - **Bundle budget is getting close:** the initial JS is now **103.1 KB gzip** (324 KB raw) against Step 15's ~110 KB target. It was 101.4 after Step 6; the header and toggle added 1.7 KB. `icons.ts` (the socials in Step 8, the tech chips in Steps 9 to 12) and `dates.ts` will add more. Keep an eye on it; Step 15 does the real measurement.
+  - **⚠ Bundle budget exceeded: the initial JS is now 114.2 KB gzip (350 KB raw), against Step 15's ~110 KB target.** It was 103.1 after Step 7, so Step 8 added 11.1 KB.
+    - **Cause:** `getSocial()` looks icons up by string at runtime, so the bundler must keep **all 19** `SOCIAL_ICONS`, not just the 7 in use. Several brand logos are large: CodeChef 7.4 KB and Kaggle 3.6 KB of SVG path data, GeeksforGeeks 1.6 KB.
+    - **Tree-shaking does work:** none of the `TECH_ICONS` are in the bundle yet (checked with SVG-path probes).
+    - **It will get worse.** The Home page (eager, Step 12) uses `TechChip`, which makes all of `TECH_ICONS` reachable: about 35 entries, including PostgreSQL 5.3 KB and React 3.0 KB of paths.
+    - **Options for Step 15 (owner's call):**
+      - (a) Raise the budget. The CSS-only motion and the lazy pages already keep the site fast.
+      - (b) Trim the registries to the icons actually used. That's simple, but adding a platform then means one line in `icons.ts`, which is already the documented workflow.
+      - (c) Load the icon registries with a dynamic `import()`. Nothing shifts if the icon boxes are fixed-size, but it adds complexity.
+      - (d) Load the `/projects`, `/experience` and `/resume` pages lazily, and the footer socials too. That's not recommended, because the footer is on every page.
   - At 320px, after you navigate to `/resume`, the active "Resume" link stays partly scrolled out of view, since nothing scrolls the nav on route change, only on focus. That's cosmetic, and Step 16 (responsive QA) can decide whether it matters.
-  - **Each dev page load prints the `[content]` warning once,** because every full reload re-runs the validator. Client-side navigation doesn't re-run it.
+  - **The `[content]` warning prints once per full page load, and again after each hot data edit** (the validator re-runs on new content). Client-side navigation doesn't re-run it.
+  - At 1440px the footer's top border stops about 15px short of the right edge. That's the space `scrollbar-gutter: stable` (§2.4) reserves for the scrollbar, and it's where the scrollbar is drawn in a normal desktop browser. It's expected.
   - Git on Windows warns about LF→CRLF. If you want LF everywhere (the Prettier default), add `.gitattributes` with `* text=auto eol=lf`. I didn't add it; ask if you want it.
   - Delete the `.gitkeep` files as real files land in each folder.
 
@@ -99,7 +119,7 @@ _Overwrite this section at the end of every step._
   Read: §4.5, §4.6
   **Done when:** sticky header with blur; active link state correct (Home isn't active on other pages); toggle animates sun/moon; one line at 320px; keyboard focus visible.
 
-- [ ] **Step 8: Footer + SocialLinks**
+- [x] **Step 8: Footer + SocialLinks**
   Read: §4.7, §4.8
   **Done when:** footer is one row on `sm+` and stacked/centered on mobile; all socials from data render with correct icons; adding/removing a line in `socials.ts` updates instantly; an unknown platform shows the link icon; `mailto:` doesn't open a new tab.
 

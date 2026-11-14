@@ -1,4 +1,5 @@
 import { Outlet, ScrollRestoration, useLocation } from "react-router-dom";
+import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
 import NotFound from "@/pages/NotFound";
 
@@ -20,7 +21,7 @@ export function RootLayout({ error = false }: RootLayoutProps) {
           {error ? <NotFound /> : <Outlet />}
         </div>
       </main>
-      {/* <Footer /> — Step 8 */}
+      <Footer />
       <ScrollRestoration />
     </div>
   );

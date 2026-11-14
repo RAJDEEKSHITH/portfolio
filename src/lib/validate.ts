@@ -81,3 +81,10 @@ export function validateContent(): void {
       problems.map((p) => `  • ${p}`).join("\n"),
   );
 }
+
+// Dev: this module imports every data file but is loaded from main.tsx (not hot-reloadable), so a
+// data edit would force a full page reload. Accepting updates here keeps edits to src/data/* as
+// hot updates and re-runs the checks on the new content.
+if (import.meta.hot) {
+  import.meta.hot.accept((next) => next?.validateContent());
+}
