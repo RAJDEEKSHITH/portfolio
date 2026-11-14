@@ -8,6 +8,7 @@ import { getDriveId } from "@/lib/resume";
 import type { Experience, Project, Site, Social } from "@/types/content";
 
 const isPath = (s: string): boolean => s.startsWith("/") || s.startsWith("http");
+const LOGO_RE = /^\/logos\/[^/]+\.(svg|webp)$/;
 
 const findDuplicates = (values: string[]): string[] =>
   [...new Set(values.filter((v, i) => values.indexOf(v) !== i))];
@@ -25,8 +26,14 @@ export function validateContent(): void {
 
   const problems: string[] = [];
 
-  jobs.forEach(({ company, start, end }, i) => {
+  jobs.forEach(({ company, start, end, logo, links: jobLinks }, i) => {
     const at = `experience[${i}] (${company})`;
+    if (logo !== undefined && !LOGO_RE.test(logo)) {
+      problems.push(`${at}: logo "${logo}" must look like "/logos/name.svg" or "/logos/name.webp" (file in public/logos)`);
+    }
+    jobLinks?.forEach(({ label, url }, j) => {
+      if (url.trim() === "") problems.push(`${at}: links[${j}] ("${label}") has an empty url`);
+    });
     const startOk = YEAR_MONTH_RE.test(start);
     const endOk = end === null || YEAR_MONTH_RE.test(end);
     if (!startOk) problems.push(`${at}: start "${start}" must be "YYYY-MM"`);

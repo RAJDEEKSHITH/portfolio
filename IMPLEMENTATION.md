@@ -39,6 +39,10 @@ Starting point: Vite React + TypeScript project with Tailwind v4 already configu
 | Colors | Six semantic CSS-variable tokens | Components can't drift between themes. |
 | Resume | Google Drive share link (`site.resume.driveUrl`); Drive preview iframe on all sizes + Download / Open in Google Drive buttons | Updating = upload a new version in Drive, the link never changes. Drive's viewer works on phones, unlike an embedded PDF (iOS shows only page 1; Android Chrome doesn't render it inline). |
 | Tech chips | Icon + label, monochrome | More readable than icon-only tiles; black brand icons (Next.js, Vercel) don't vanish in dark mode. |
+| Formatted text | `**bold**` + `[label](url)` only, via a tiny tokenizer (`<RichText>`, §5.8) | Enough to highlight one metric or link a write-up. No Markdown library, no `dangerouslySetInnerHTML`, unsafe link schemes fall back to text. |
+| Company logos | Optional `logo`; every job always shows a tile (logo or letter) | Rows align whether or not a logo exists. |
+| Experience on Home | Accordion: header row always visible, details behind a chevron (§6.2) | Home stays scannable; details are one tap away. The Experience page shows everything. |
+| Bundle budget | Initial JS ≤ **140 KB gzip, hard cap** (§8) | Keeps the full icon registries. Over the cap → code-split, never raise it again. |
 
 ---
 
@@ -79,16 +83,20 @@ export default defineConfig({
 `tsconfig.app.json` → inside `compilerOptions`:
 
 ```json
-"baseUrl": ".",
+"strict": true,
 "paths": { "@/*": ["./src/*"] }
 ```
 
-(Keep whatever the template already enables: `strict`, `verbatimModuleSyntax`, `erasableSyntaxOnly`, `noUnusedLocals`, etc.)
+No `baseUrl`: TypeScript 6 rejects it (TS5101), and `paths` alone resolves relative to the tsconfig. Set `"strict": true` explicitly.
+(Keep whatever the template already enables: `verbatimModuleSyntax`, `erasableSyntaxOnly`, `noUnusedLocals`, etc.)
 
 ### 2.4 Design tokens (`src/index.css`)
 
 ```css
 @import "tailwindcss";
+
+/* Don't generate classes from the spec/docs (CLAUDE.md, IMPLEMENTATION.md, …) */
+@source not "../*.md";
 
 /* class-based dark mode */
 @custom-variant dark (&:where(.dark, .dark *));
@@ -101,6 +109,7 @@ export default defineConfig({
   --subtle: #f4f4f5;  /* chip / hover fill */
   --border: #e4e4e7;
   --accent: #16a34a;  /* status dot + tiny highlights only */
+  --logo: #ffffff;    /* company-logo tile fill (most logos are drawn for white) */
   color-scheme: light;
 }
 .dark {
@@ -110,10 +119,11 @@ export default defineConfig({
   --subtle: #18181b;
   --border: #27272a;
   --accent: #22c55e;
+  --logo: #f4f4f5;
   color-scheme: dark;
 }
 
-/* Utilities: bg-bg, text-fg, text-muted, bg-subtle, border-border, text-accent (+ /opacity) */
+/* Utilities: bg-bg, text-fg, text-muted, bg-subtle, border-border, text-accent, bg-logo (+ /opacity) */
 @theme inline {
   --color-bg: var(--bg);
   --color-fg: var(--fg);
@@ -121,6 +131,7 @@ export default defineConfig({
   --color-subtle: var(--subtle);
   --color-border: var(--border);
   --color-accent: var(--accent);
+  --color-logo: var(--logo);
 }
 
 @theme {
@@ -169,6 +180,8 @@ export default defineConfig({
 }
 ```
 
+`bg-logo` is used only by `CompanyLogo` tiles that hold a logo image (§6.2). It's a light surface in both themes because most company logos are drawn for white; in dark mode it's toned down to `#f4f4f5` so it doesn't glare.
+
 ### 2.5 `index.html`
 
 ```html
@@ -194,7 +207,8 @@ export default defineConfig({
     <meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="preload" as="image" href="/avatar.webp" fetchpriority="high" />
+    <!-- Avatar preload: enable once public/avatar.webp exists (remove entirely if site.avatar is null) -->
+    <!-- <link rel="preload" as="image" href="/avatar.webp" fetchpriority="high" /> -->
 
     <title>Your Name — Full-Stack Engineer</title>
     <meta name="description" content="Portfolio of Your Name." />
@@ -211,7 +225,7 @@ export default defineConfig({
 </html>
 ```
 
-(Remove the avatar preload if `site.avatar` is `null`.)
+(Keep the avatar preload commented out until `public/avatar.webp` exists, then enable it. Delete it if `site.avatar` is `null`.)
 
 ### 2.6 Theme (`src/lib/theme.ts`, `src/context/ThemeContext.tsx`)
 
@@ -326,6 +340,7 @@ export type Site = {
   name: string;
   role: string;
   tagline?: string;
+  /** Paragraphs. Rich text: **bold** and [label](url) — see components/ui/RichText */
   bio: string[];
   email: string;
   location?: string;
@@ -347,6 +362,8 @@ export type Social = {
 export type WorkMode = "On-site" | "Remote" | "Hybrid";
 export type EmploymentType = "Full-time" | "Part-time" | "Internship" | "Contract" | "Freelance";
 
+export type ExperienceLink = { label: string; url: string };
+
 export type Experience = {
   company: string;
   role: string;
@@ -357,12 +374,18 @@ export type Experience = {
   mode?: WorkMode;
   type?: EmploymentType;
   url?: string;
+  /** square logo in /public/logos, .svg or .webp, e.g. "/logos/acme.svg". No logo → monogram tile */
+  logo?: string;
   tech?: string[];
+  /** Rich text: **bold** and [label](url) */
   highlights?: string[];
+  /** Shown after the highlights (inside the expandable panel on Home) */
+  links?: ExperienceLink[];
 };
 
 export type Project = {
   title: string;
+  /** Rich text: **bold** and [label](url) */
   description: string;
   year?: number;
   tech?: string[];
@@ -380,7 +403,7 @@ export type SkillGroup = { group: string; items: string[] };
 ```ts
 import type { Site } from "@/types/content";
 
-/** Global site info. Edit freely. */
+/** Global site info. Edit freely. bio[] paragraphs support rich text: **bold** and [label](url). */
 export const site = {
   name: "Your Name",
   role: "Full-Stack Engineer",
@@ -451,7 +474,16 @@ import type { Experience } from "@/types/content";
 /**
  * Work experience. Append anywhere — auto-sorted (current first, then newest start).
  * Required: company, role, start ("YYYY-MM"), end ("YYYY-MM" | null = current)
- * Optional: location, mode, type, url, tech[], highlights[]
+ * Optional: location, mode, type, url, logo, tech[], highlights[], links[]
+ *   mode: "On-site" | "Remote" | "Hybrid"
+ *   type: "Full-time" | "Part-time" | "Internship" | "Contract" | "Freelance"
+ *   logo: square image in public/logos, .svg or .webp → "/logos/acme.svg". Omit it → a letter tile.
+ *   links: [{ label: "Case study", url: "https://…" }] → shown after the highlights.
+ *
+ * highlights support rich text: **bold** and [label](url). Nothing else (no italics, no HTML).
+ *   - Lead with the result, then how: "Cut build time **from 9 min to 2 min** by moving to Vite."
+ *   - At most ONE **bold** per bullet: the metric or outcome. Not every bullet needs one.
+ *   - Real numbers only. Numbers are never bolded automatically.
  */
 export const experience = [
   {
@@ -463,11 +495,14 @@ export const experience = [
     mode: "On-site",
     type: "Full-time",
     url: "https://example.com",
+    logo: "/logos/company-a.svg",
     tech: ["Next.js", "TypeScript", "Tailwind CSS", "AWS"],
     highlights: [
-      "What you did, with impact where possible (numbers beat adjectives).",
-      "Another concrete contribution.",
+      "Cut checkout page load time **from 3.2 s to 1.1 s** by moving rendering to the server.",
+      "Built the internal design system; see the [write-up](https://example.com/blog/design-system).",
+      "Another concrete contribution, no metric needed.",
     ],
+    links: [{ label: "Case study", url: "https://example.com/case-study" }],
   },
   {
     company: "Company B",
@@ -478,10 +513,12 @@ export const experience = [
     mode: "Remote",
     type: "Full-time",
     tech: ["React", "Tailwind CSS"],
-    highlights: ["…"],
+    highlights: ["Plain bullet with no logo, no bold and no link above or below."],
   },
 ] satisfies Experience[];
 ```
+
+The placeholder data deliberately covers both cases: Company A has a logo, one bold metric, an inline link and a `links` entry; Company B has none of them. `public/logos/company-a.svg` is a neutral placeholder logo.
 
 ### 3.6 `src/data/projects.ts`
 
@@ -492,6 +529,7 @@ import type { Project } from "@/types/content";
  * Projects. Array order = display order.
  * Required: title, description. Optional: year, tech[], links{live,github}, image, featured.
  * featured: true → shown on Home.
+ * description supports rich text: **bold** and [label](url) (same rules as experience highlights).
  */
 export const projects = [
   {
@@ -669,6 +707,8 @@ It also accepts its own hot updates in dev: `if (import.meta.hot) import.meta.ho
 
 Checks:
 - every `experience.start` / non-null `end` and `site.resume.updated` matches `YEAR_MONTH_RE`
+- `experience.logo`, when set, matches `/^\/logos\/[^/]+\.(svg|webp)$/` (a file in `public/logos/`)
+- every `experience.links[].url` is non-empty
 - `end` is not before `start`
 - unknown social platforms (`!isKnownPlatform`)
 - duplicate social URLs / duplicate project titles (would cause React key collisions)
@@ -682,6 +722,7 @@ Checks:
 - [ ] New job with `end: null` anywhere in the array → appears first with "Working".
 - [ ] `{ platform: "foo", url }` → generic link icon + dev warning, no crash.
 - [ ] `"Zustand"` in skills → text-only chip; `"Next.js"` → chip with icon.
+- [ ] `logo: "logo.png"` or `links: [{ label: "x", url: "" }]` → one dev warning each, no crash.
 
 ---
 
@@ -690,6 +731,7 @@ Checks:
 ### 4.1 `src/router.tsx`
 
 ```tsx
+import type { ComponentType } from "react";
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import { RootLayout } from "@/components/layout/RootLayout";
 import Home from "@/pages/Home";
@@ -702,7 +744,7 @@ export const pageLoaders = {
 } as const;
 
 const lazyPage =
-  (load: () => Promise<{ default: React.ComponentType }>) =>
+  (load: () => Promise<{ default: ComponentType }>) =>
   async () => ({ Component: (await load()).default });
 
 export const router = createBrowserRouter([
@@ -710,6 +752,9 @@ export const router = createBrowserRouter([
     path: "/",
     element: <RootLayout />,
     errorElement: <RootLayout error />,
+    // First load of a lazy route renders nothing until its chunk arrives (a few ms). Declaring it
+    // explicitly keeps that behaviour and silences React Router's "No HydrateFallback" warning.
+    HydrateFallback: () => null,
     children: [
       { index: true, element: <Home /> },
       { path: "experience", lazy: lazyPage(pageLoaders.experience) },
@@ -722,7 +767,7 @@ export const router = createBrowserRouter([
 ]);
 ```
 
-(Use `import type { ComponentType } from "react"` instead of the `React.` namespace if the lint config requires.)
+(`import type { ComponentType }` rather than the `React.` namespace: with `verbatimModuleSyntax` there's no global `React` to reference.)
 
 ### 4.2 `src/main.tsx`
 
@@ -762,7 +807,7 @@ export function RootLayout({ error = false }: RootLayoutProps) {
   const { pathname } = useLocation();
   return (
     <div className="flex min-h-dvh flex-col">
-      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-fg focus:px-3 focus:py-2 focus:text-sm focus:text-bg">
+      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-fg focus:px-3 focus:py-2 focus:text-sm focus:text-bg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg">
         Skip to content
       </a>
       <Header />
@@ -802,12 +847,13 @@ export function Container({ as: Tag = "div", className, children }: ContainerPro
     - `ul`: `-mx-1 p-1 scroll-px-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`, so a scroll container doesn't clip the 4px focus ring;
     - each link: `onFocus={(e) => e.currentTarget.scrollIntoView({ block: "nearest", inline: "nearest" })}`. Browsers don't scroll a *partly* visible focused element into view;
     - `<nav>` gets `min-w-0`, links `whitespace-nowrap`, and the toggle `shrink-0`.
+    - **Step 16 addition:** on every `pathname` change, scroll the active link (`aria-current="page"`) into view with `scrollIntoView({ block: "nearest", inline: "nearest" })`. Use the default instant behaviour, or `behavior: "smooth"` only when `prefers-reduced-motion` isn't `reduce`. It must never scroll the page vertically (the header is sticky at the top, so `block: "nearest"` is a no-op; verify it). This fixes "Resume" staying clipped at 320px after navigating to `/resume`.
 - Right: `<ThemeToggle />`.
 - Optional hairline `border-b border-border/60` only once scrolled, via an IntersectionObserver on a 1px sentinel at the top of `<main>` (no scroll listeners).
 
 ### 4.6 `ThemeToggle`
 
-- `button`, `type="button"`, `className="relative grid size-9 place-items-center rounded-full text-muted transition-colors hover:bg-subtle hover:text-fg"` + focus ring.
+- `button`, `type="button"`, `className="relative grid size-9 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-subtle hover:text-fg"` + focus ring.
 - `aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}`.
 - Sun + moon icons (`react-icons/lu`: `LuSun`, `LuMoon`) stacked in the same grid cell (`[grid-area:1/1]`), crossfaded with `transition-[opacity,transform] duration-300`; the inactive icon gets `scale-75 rotate-45 opacity-0`.
 
@@ -827,6 +873,8 @@ export function Footer() {
 ```
 
 Nothing else — no nav columns, no quotes, no "built with".
+
+**Step 16 change (decided by the owner):** move `border-t border-border` off `<footer>` onto an inner element inside `<Container>`, e.g. `<Container><div className="flex flex-col-reverse items-center gap-4 border-t border-border py-8 sm:flex-row sm:justify-between">…</div></Container>`. Not on the Container itself (that would include its `px-5 sm:px-6`). The hairline then matches the text width exactly at every size and never reaches the scrollbar gutter.
 
 ### 4.8 `SocialLinks`
 
@@ -902,7 +950,7 @@ export function Section({ title, action, className, children }: SectionProps) {
 
 ### 5.2 `PageHeader` (used by Experience / Projects / Resume / 404)
 
-`<h1>` at page-title scale + optional subtitle at body scale, `mb-10 sm:mb-12`.
+`type PageHeaderProps = { title: ReactNode; subtitle?: ReactNode; className?: string }`. A `<header className="mb-10 sm:mb-12">` with the `<h1>` at page-title scale plus `break-words` (long titles wrap at 320px), then an optional `<p className="mt-3 text-[15px] leading-relaxed text-muted">` subtitle.
 
 ### 5.3 `Reveal` — staggered enter (CSS only)
 
@@ -926,8 +974,11 @@ Wrap top-level page blocks (hero = 0, bio = 1, socials = 2, sections = 3…). Do
 ### 5.4 `TechChip`
 
 ```tsx
-export function TechChip({ name }: { name: string }) {
-  const Icon = getTechIcon(name);
+type TechChipProps = { name: string };
+
+export function TechChip({ name }: TechChipProps) {
+  // Direct registry read (same as getTechIcon): entries are module-level components, so identity is stable
+  const Icon: IconType | undefined = TECH_ICONS[toKey(name)];
   return (
     <li className="inline-flex items-center gap-1.5 rounded-full border border-border bg-subtle px-2.5 py-1 text-xs font-medium text-fg/80">
       {Icon && <Icon aria-hidden className="size-3.5 shrink-0" />}
@@ -938,10 +989,14 @@ export function TechChip({ name }: { name: string }) {
 // parent: <ul className="flex flex-wrap gap-2">
 ```
 
+Why not `getTechIcon(name)`: calling a function that returns a component during render fails `pnpm lint` (`react-hooks/static-components`, "component is created during render"), even though the registry entries are stable. A property read passes, the same pattern `SocialLinks` uses with `meta.icon`. `getTechIcon` stays exported for non-render use.
+
 ### 5.5 `StatusBadge`
 
 ```tsx
-export function StatusBadge({ children = "Working" }: { children?: ReactNode }) {
+type StatusBadgeProps = { children?: ReactNode };
+
+export function StatusBadge({ children = "Working" }: StatusBadgeProps) {
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/25 bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
       <span className="relative flex size-1.5">
@@ -956,14 +1011,36 @@ export function StatusBadge({ children = "Working" }: { children?: ReactNode }) 
 
 ### 5.6 `ExternalLink`
 
-Extends `ComponentProps<"a">`. `group inline-flex items-center gap-1 text-sm font-medium text-fg underline-offset-4 hover:underline` + `LuArrowUpRight` with `transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5`. Adds `target`/`rel` automatically for `http` URLs.
+Extends `ComponentProps<"a">`. `group inline-flex items-center gap-1 text-sm font-medium text-fg underline-offset-4 hover:underline` + the standard focus ring + `LuArrowUpRight` (`size-3.5 shrink-0`, `aria-hidden`) with `transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5`. Adds `target="_blank" rel="noopener noreferrer"` automatically when `href` starts with `http`; caller props are spread after, so they can override.
 
 ### 5.7 `CopyEmail` + `useCopyToClipboard`
 
-- Hook returns `{ copied, copy(text) }`; uses `navigator.clipboard.writeText`, resets `copied` after 1500ms (clear the timeout on unmount).
-- Button shows `site.email` + copy icon → check icon when copied. If the clipboard API is unavailable/fails, fall back to `window.location.href = "mailto:…"`.
-- Visually hidden `<span aria-live="polite">` announces "Email copied".
-- Long emails: `truncate` inside a `min-w-0` parent.
+- `src/hooks/useCopyToClipboard.ts` returns `{ copied, copy }`. `copy(text): Promise<boolean>` uses `navigator.clipboard.writeText` and resolves `false` when the API is missing or rejects. `copied` resets after 1500ms; the timer is cleared on re-copy and on unmount.
+- `CopyEmail`: a `rounded-lg` bordered button (`border border-border px-3 py-2 text-sm font-medium text-fg transition-colors hover:bg-subtle` + focus ring) showing `site.email` and a copy icon. On success the copy icon crossfades to a check (`text-accent`): both icons sit in one grid cell (`[grid-area:1/1]`), the hidden one gets `scale-75 opacity-0`, `transition-[opacity,transform] duration-200`. If `copy()` resolves `false`, fall back to `window.location.href = "mailto:…"`.
+- `aria-label="Copy email address {email}"` (contains the visible text, WCAG 2.5.3), `title="Copy email"`.
+- Visually hidden `<span aria-live="polite">` announces "Email copied" (empty otherwise).
+- Long emails: `truncate` on the text, inside `min-w-0` parents (`flex min-w-0` wrapper, `min-w-0 max-w-full` button).
+
+### 5.8 `RichText` + `src/lib/richText.ts`
+
+Owner-written strings (`site.bio[]`, `experience.highlights[]`, `project.description`) support exactly two markers:
+
+| Write | Renders |
+|---|---|
+| `**text**` | `<strong className="font-medium text-fg">` |
+| `[label](url)` | a link: `text-fg underline underline-offset-4 decoration-border transition-colors hover:decoration-fg` + focus ring |
+
+- `src/lib/richText.ts` is a pure tokenizer: `parseRichText(input): RichToken[]` with `RichToken = text | bold | link`. One regex, `/\*\*([^*\s](?:[^*]*[^*\s])?)\*\*|\[([^\]
+]+)\]\(([^()\s]+)\)/g`; adjacent text merges.
+- `RichText({ text })` maps tokens to React nodes and returns a fragment, so wrap it in a `<p>`/`<li>`. **Never `dangerouslySetInnerHTML`.** HTML in the input is shown as literal text.
+- Anything that isn't a complete, well-formed marker renders as plain text: `**unclosed`, `** spaced **`, `[](url)`, a URL with spaces or parentheses.
+- No nesting (no link inside bold), no italics, no headings, no lists.
+- **Link schemes** (`getLinkKind`):
+  - `http(s)://host` → `<a target="_blank" rel="noopener noreferrer">`;
+  - `/path` → router `<Link>`;
+  - `mailto:` → plain `<a>`;
+  - **anything else** (`javascript:`, `data:`, `//host`, relative paths) → the label as plain text.
+- Numbers are never bolded automatically. Writing guidance lives in the `experience.ts` header and CLAUDE.md's owner table: lead with the result, at most one bold metric/outcome per bullet, not every bullet needs one, real numbers only.
 
 ---
 
@@ -983,48 +1060,136 @@ Home title: `` `${site.name} — ${site.role}` ``.
 Each block in `<Reveal step={n}>`:
 
 1. **Hero** — avatar (`size-16 sm:size-20 rounded-full object-cover`, `width={80} height={80}`, `fetchPriority="high"`, not lazy) + name (`<h1>`, page-title scale) + `role · location` + `<CopyEmail />` in `flex flex-wrap items-center gap-x-2 gap-y-1` (meta scale). If `site.avatar` is null, the layout still looks intentional.
-2. **Bio** — `site.bio` paragraphs, body scale, `max-w-prose space-y-3`.
+2. **Bio** — `site.bio` paragraphs, each `<p><RichText text={paragraph} /></p>`, body scale, `max-w-prose space-y-3`.
 3. **Socials** — `<SocialLinks className="-ml-2" />` (aligns icon glyphs with the text edge).
-4. **Experience** — `Section title="Experience"` with action `View all →` (`Link` to `/experience`, hidden if total ≤ limit). First `site.home.experienceLimit` of `sortExperience(experience)` as **compact** `ExperienceItem`s, `space-y-6`.
+4. **Experience** — `Section title="Experience"` with action `View all →` (`Link` to `/experience`, hidden if total ≤ limit). First `site.home.experienceLimit` of `sortExperience(experience)` as **`expandable`** `ExperienceItem`s (accordion, §6.2), `space-y-8`. All start closed; each opens independently.
 5. **Featured projects** — `featured` projects, max `site.home.projectLimit`, compact `ProjectCard` grid `grid gap-4 sm:grid-cols-2`, action `All projects →`. Section hidden if none are featured.
 6. **Skills** — `grid gap-x-6 gap-y-4 sm:grid-cols-[8rem_1fr]`: group label (meta scale) + chip list. Stacked on mobile.
 
-### 6.2 `ExperienceItem`
+### 6.2 `ExperienceItem` + `CompanyLogo`
 
 ```tsx
-type ExperienceItemProps = { item: Experience; compact?: boolean };
+type ExperienceItemProps = {
+  item: Experience;
+  /** Home only: details collapse behind a chevron; duration hidden */
+  expandable?: boolean;
+  /** Company heading level: "h3" under a Section h2 (Home), "h2" on the Experience page (directly under the h1) */
+  headingAs?: "h2" | "h3";
+};
 ```
 
+`expandable` replaces the old `compact` prop. Home passes `expandable`; the Experience page passes `headingAs="h2"` and shows everything with no toggle.
+
+**`CompanyLogo`** (`src/components/experience/CompanyLogo.tsx`). Every item **always** shows a tile, so rows align whether or not a logo exists:
+
+```tsx
+type CompanyLogoProps = { company: string; logo?: string };
+
+const TILE = "grid size-10 shrink-0 place-items-center overflow-hidden rounded-lg border border-border sm:size-12";
+
+export function CompanyLogo({ company, logo }: CompanyLogoProps) {
+  if (logo) {
+    return (
+      <div className={cn(TILE, "bg-logo")}>
+        <img src={logo} alt="" width={48} height={48} loading="lazy" decoding="async" className="size-full object-contain p-1.5" />
+      </div>
+    );
+  }
+  return (
+    <div aria-hidden className={cn(TILE, "bg-subtle text-sm font-semibold text-muted")}>
+      {company.trim().charAt(0).toUpperCase()}
+    </div>
+  );
+}
 ```
-<article>
-  <div class="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-6">
-    <div class="min-w-0">
-      <h3 class="flex flex-wrap items-center gap-2 text-base font-medium sm:text-lg">
-        {url ? <a href={url} …>{company}</a> : company}
-        {isCurrent(item) && <StatusBadge />}
-      </h3>
-      <p class="text-[15px] text-muted">{[role, type].filter(Boolean).join(" · ")}</p>
+
+`alt=""` and `aria-hidden` because the company name is right next to the tile.
+
+**Layout:** `flex gap-4` → `[tile][content: min-w-0 flex-1]`. Everything (title row, labels, chips, bullets, links) sits in the content column, so all of it shares one left edge.
+
+```
+<article class="flex gap-4">
+  <CompanyLogo company={company} logo={logo} />
+  <div class="min-w-0 flex-1">
+    <div class="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-6">
+      <div class="min-w-0">
+        <{headingAs} class="flex flex-wrap items-center gap-2 text-base font-medium sm:text-lg">
+          {url ? <a href={url} target="_blank" rel="noopener noreferrer" class="break-words … focus ring">{company}</a> : <span class="break-words">{company}</span>}
+          {isCurrent(item) && <StatusBadge />}
+          {expandable && hasDetails && <ChevronButton />}
+        </{headingAs}>
+        <p class="text-[15px] text-muted">{[role, type].filter(Boolean).join(" · ")}</p>
+      </div>
+      <div class="shrink-0 text-sm text-muted tabular-nums sm:text-right">
+        <p>{formatRange(start, end)}{!expandable && <span class="hidden sm:inline"> · {formatDuration(start, end)}</span>}</p>
+        {meta && <p>{meta}</p>}         // meta = [location, mode].filter(Boolean).join(" · ")
+      </div>
     </div>
-    <div class="shrink-0 text-sm text-muted tabular-nums sm:text-right">
-      <p>{formatRange(start, end)}{!compact && <span class="hidden sm:inline"> · {formatDuration(start, end)}</span>}</p>
-      {meta && <p>{meta}</p>}         // meta = [location, mode].filter(Boolean).join(" · ")
-    </div>
+
+    {expandable ? <Panel>{details}</Panel> : details}
   </div>
-
-  {!compact && tech?.length  → <ul class="mt-4 flex flex-wrap gap-2">TechChip…</ul>}
-  {!compact && highlights?.length → 
-     <ul class="mt-4 space-y-2 text-[15px] leading-relaxed text-muted">
-       <li class="relative pl-4 before:absolute before:left-0 before:top-[0.7em] before:size-1 before:rounded-full before:bg-muted/60">…</li>
-     </ul>}
 </article>
 ```
 
-Missing optional fields must render nothing — no empty rows, no stray "·".
+**Details** (`hasDetails` = any of `tech`, `highlights`, `links` is non-empty). Each block renders only if its data exists, and each has `mt-4`:
+
+1. **Technologies & Tools:** label `<p className="text-sm font-medium text-muted">Technologies &amp; Tools</p>`, then `<ul className="mt-2 flex flex-wrap gap-2">` of `TechChip`s.
+2. **What I've done:** the same label style, then `<ul className="mt-2 space-y-2 text-[15px] leading-relaxed text-muted">` with `<li className="relative pl-4 before:absolute before:left-0 before:top-[0.7em] before:size-1 before:rounded-full before:bg-muted/60"><RichText text={h} /></li>`.
+3. **Links:** `<ul className="mt-4 flex flex-wrap gap-x-4 gap-y-2">` of `<li><ExternalLink href={url}>{label}</ExternalLink></li>`.
+
+On the Experience page the details render directly under the title row. There's no `border-t`, because the list's `divide-y` already separates rows.
+
+**Accordion (`expandable`, Home only).** Each item owns `const [open, setOpen] = useState(false)` and `const panelId = useId()`. All start closed and open independently. **No chevron and no panel when `hasDetails` is false.**
+
+- **Chevron button,** after the company and StatusBadge inside the heading:
+
+  ```tsx
+  <button
+    type="button"
+    aria-expanded={open}
+    aria-controls={panelId}
+    aria-label={`${open ? "Hide" : "Show"} details for ${company}`}
+    onClick={() => setOpen((o) => !o)}
+    className="-my-1.5 grid size-9 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-subtle hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg"
+  >
+    <LuChevronRight
+      aria-hidden
+      className={cn("size-4 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none", open && "rotate-90")}
+    />
+  </button>
+  ```
+
+  `size-9` is the 36px minimum tap target (CLAUDE.md). `-my-1.5` keeps it from making the title line taller.
+- **Panel:**
+
+  ```tsx
+  <div
+    id={panelId}
+    inert={!open}
+    className={cn(
+      "grid transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+      open ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+    )}
+  >
+    <div className="-mx-1 min-h-0 overflow-hidden px-1">
+      <div className={cn("pb-1 transition-opacity duration-300 motion-reduce:transition-none", open ? "opacity-100" : "opacity-0")}>
+        <div className="mt-4 border-t border-border">{details}</div>
+      </div>
+    </div>
+  </div>
+  ```
+
+  - `grid-template-rows` 0fr ↔ 1fr is the **only** layout animation allowed (CLAUDE.md, Animation rules).
+  - `inert` when closed removes the hidden links from the Tab order and the accessibility tree.
+  - `-mx-1 px-1` and `pb-1` stop `overflow-hidden` from clipping focus rings. Use horizontal padding only on the overflow box: vertical padding there would keep a closed panel a few pixels tall.
+  - Order inside the panel: `border-t` divider, then Technologies & Tools, then What I've done, then links.
+
+Missing optional fields must render nothing: no empty rows, no stray "·", no empty labels.
 
 ### 6.3 Experience (`/experience`)
 
 - `PageHeader` "Experience" + subtitle (e.g. total experience computed from the earliest start — computed, never hard-coded).
-- `sortExperience(experience)` → full `ExperienceItem`s in `divide-y divide-border`, each `py-8 first:pt-0`.
+- `sortExperience(experience)` → full `ExperienceItem`s (`headingAs="h2"`, not expandable) in `divide-y divide-border`, each `py-8 first:pt-0`. Every block shows, with its label; no chevrons.
 
 ### 6.4 Projects (`/projects`)
 
@@ -1033,7 +1198,7 @@ Missing optional fields must render nothing — no empty rows, no stray "·".
 - `ProjectCard` (`compact` prop hides image on Home):
   - `article.group flex flex-col overflow-hidden rounded-lg border border-border transition-colors hover:border-fg/20`
   - Image (optional): wrapper `overflow-hidden bg-subtle aspect-video`; `img` `size-full object-cover transition-transform duration-500 group-hover:scale-[1.02]`, `width={1280} height={720} loading="lazy" decoding="async"`, `alt={title}`.
-  - Body `flex flex-1 flex-col p-4 sm:p-5`: title + year row (`flex items-baseline justify-between gap-3`, title `min-w-0`), description (body scale), tech chips, then links `mt-auto pt-4 flex flex-wrap gap-4` → `ExternalLink` "Live" / "Source" only if present.
+  - Body `flex flex-1 flex-col p-4 sm:p-5`: title + year row (`flex items-baseline justify-between gap-3`, title `min-w-0`), description (body scale, `<p><RichText text={description} /></p>`, §5.8), tech chips, then links `mt-auto pt-4 flex flex-wrap gap-4` → `ExternalLink` "Live" / "Source" only if present.
   - No whole-card anchor (avoids nested links). Title links to `live ?? github` when available.
 
 ### 6.5 Resume (`/resume`)
@@ -1074,19 +1239,19 @@ Page (`const links = getResumeLinks(site.resume.driveUrl)`):
 - Preview iframe on **all** screen sizes, with a centred "Loading preview…" behind it so the box is never blank while it loads:
 
   ```tsx
-  <div className="relative mt-8 rounded-lg bg-subtle">
+  <div className="relative mt-8 overflow-hidden rounded-lg border border-border bg-subtle">
     <p aria-hidden className="absolute inset-0 grid place-items-center text-sm text-muted">Loading preview…</p>
     <iframe
       src={links.preview}
       title="Resume preview"
       loading="lazy"
       allow="autoplay"
-      className="relative block aspect-[1/1.414] max-h-[85dvh] w-full rounded-lg border border-border"
+      className="relative block aspect-[1/1.414] max-h-[85dvh] w-full"
     />
   </div>
   ```
 
-  The wrapper carries `mt-8` and `bg-subtle` instead of the iframe. An iframe paints its own background over anything behind it, so `bg-subtle` on the iframe would hide the loading text. The Drive viewer covers the text once it loads. `block` removes the inline baseline gap under the iframe.
+  The wrapper carries `mt-8`, the border, the radius and `bg-subtle` instead of the iframe; `overflow-hidden` clips the iframe to the rounded corners. An iframe paints its own background over anything behind it, so `bg-subtle` on the iframe would hide the loading text. The Drive viewer covers the text once it loads. `block` removes the inline baseline gap under the iframe.
 
 ### 6.6 NotFound
 
@@ -1098,6 +1263,8 @@ Page (`const links = getResumeLinks(site.resume.driveUrl)`):
 - [ ] Removing any optional field from any item leaves no gaps or stray separators.
 - [ ] 1 job / 0 featured projects → sections hide or adapt gracefully (no empty headings, no "View all" when nothing more).
 - [ ] Very long company name / role / email / URL wraps without overflow at 320px.
+- [ ] Experience rows align: logo tiles and letter tiles are the same size, and every text block shares the content column's left edge.
+- [ ] Rich text renders `**bold**` and `[label](url)` only; broken markers show as plain text.
 
 ---
 
@@ -1113,20 +1280,102 @@ Allowed motion (nothing else):
 | Arrow links | arrow nudges ↗ 2px | `group-hover:translate-*` |
 | Project image | scale 1.02 over 500ms | `transition-transform` |
 | Theme toggle | sun/moon crossfade + rotate | `transition-[opacity,transform] duration-300` |
+| Copy email | copy ↔ check icon crossfade, 200ms | `transition-[opacity,transform] duration-200` |
 | Current job | pinging dot | `animate-ping`, hidden under reduced motion |
+| Home experience accordion | panel opens/closes, 300ms | `transition-[grid-template-rows]` 0fr ↔ 1fr + content `transition-opacity` (§6.2) |
+| Accordion chevron | rotates 90°, 300ms | `transition-transform` |
+| Theme switch (optional Step 19) | dawn/dusk clip reveal, 650ms | View Transitions API (§7.1) |
 
-No `transition-all`, no layout-property animation, no scroll listeners, everything off with reduced motion. Don't set `scroll-behavior: smooth` globally (fights ScrollRestoration).
+Durations: 150–200ms hover/press, 300ms state toggles (theme icon, accordion, chevron), 400–600ms enter, 650ms for the Step 19 theme transition. No `transition-all`, no scroll listeners, everything off with reduced motion. **No layout-property animation, with one exception:** the Home accordion's `grid-template-rows`. Don't set `scroll-behavior: smooth` globally (fights ScrollRestoration).
 
 Polish: consistent focus rings; inverted `::selection`; SVG favicon monogram that reads on light and dark tabs (use a `prefers-color-scheme` media query inside the SVG).
+
+### 7.1 Dawn/dusk theme transition — OPTIONAL, Step 19, branch `feat/theme-transition`
+
+Built last, on its own branch, only if the owner wants it. **The owner creates the branch**, since Claude never runs git commands that change the repo. Claude checks `git branch --show-current` first and stops if it isn't `feat/theme-transition`. Until it's merged, View Transitions are not allowed anywhere (CLAUDE.md).
+
+**Effect** (View Transitions API, whole page, centre origin; the light snapshot is always the moving one):
+- **Light → dark ("dusk"):** the *old* light snapshot shrinks into the centre, revealing dark underneath.
+- **Dark → light ("dawn"):** the *new* light snapshot grows out of the centre, over the old dark one.
+- 650ms, `cubic-bezier(0.65, 0, 0.35, 1)`. `ellipse(75% 75%)` covers the corners of any viewport.
+
+**CSS** (`src/index.css`, plain CSS outside `@theme`):
+
+```css
+/* Dawn/dusk theme transition (§7.1). Inert unless html[data-theme-transition] is set. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+html[data-theme-transition="dusk"]::view-transition-old(root) {
+  z-index: 2;
+  animation: theme-dusk 650ms cubic-bezier(0.65, 0, 0.35, 1) both;
+}
+html[data-theme-transition="dawn"]::view-transition-new(root) {
+  z-index: 2;
+  animation: theme-dawn 650ms cubic-bezier(0.65, 0, 0.35, 1) both;
+}
+@keyframes theme-dusk {
+  from { clip-path: ellipse(75% 75% at 50% 50%); }
+  to   { clip-path: ellipse(0% 0% at 50% 50%); }
+}
+@keyframes theme-dawn {
+  from { clip-path: ellipse(0% 0% at 50% 50%); }
+  to   { clip-path: ellipse(75% 75% at 50% 50%); }
+}
+```
+
+**JS** (`ThemeContext.toggleTheme`; `flushSync` comes from `react-dom`, so no new dependency):
+
+```tsx
+const transitioning = useRef(false);
+
+const toggleTheme = useCallback(() => {
+  if (transitioning.current) return; // ignore clicks while a transition runs
+  const next: Theme = getDomTheme() === "dark" ? "light" : "dark";
+  const commit = () => {
+    applyTheme(next); // still adds .no-transitions for one frame
+    storeTheme(next);
+    flushSync(() => setTheme(next)); // DOM must be final before the "new" snapshot is taken
+  };
+
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (typeof document.startViewTransition !== "function" || reduce) {
+    commit(); // instant switch, exactly as before
+    return;
+  }
+
+  const root = document.documentElement;
+  root.dataset.themeTransition = next === "dark" ? "dusk" : "dawn";
+  transitioning.current = true;
+  const vt = document.startViewTransition(commit);
+  void vt.finished.finally(() => {
+    delete root.dataset.themeTransition;
+    transitioning.current = false;
+  });
+}, []);
+```
+
+Rules:
+- Keep `.no-transitions`, so colour transitions don't lag inside the new snapshot.
+- The OS-theme `change` listener stays instant: no transition.
+- No API support, or reduced motion → instant switch.
+- Only the toggle button triggers it.
+- Never use View Transitions for route changes.
 
 ---
 
 ## 8. Phase 7 — Performance
 
-Targets (prod, mobile Lighthouse): **Performance ≥ 95, CLS < 0.02, LCP < 1.8s, initial JS ≤ 130 KB gzip.**
+Targets (prod, mobile Lighthouse): **Performance ≥ 95, CLS < 0.02, LCP < 1.8s, initial JS ≤ 140 KB gzip (hard cap).**
 
 - Home eager; other pages lazy route chunks, warmed on idle.
-- `react-icons`: named imports only. The **full `SOCIAL_ICONS` and `TECH_ICONS` registries are kept on purpose**, so the owner can add socials or skills by editing data only. `getSocial()`/`getTechIcon()` look icons up by string, so every registered icon ships, used or not. That's why the budget is 130 KB rather than ~110 KB (owner decision, Step 8: 114.2 KB gzip with the full social registry). Don't trim the registries to save bytes.
+- `react-icons`: named imports only. The **full `SOCIAL_ICONS` and `TECH_ICONS` registries are kept on purpose**, so the owner can add socials or skills by editing data only. `getSocial()`/`getTechIcon()` look icons up by string, so every registered icon ships, used or not. That's why the budget is above the original ~110 KB:
+  - Step 8 (owner): raised to 130 KB, at 114.2 KB with the full social registry.
+  - Consolidation pass after Step 9 (owner): raised to **140 KB, as a hard cap**, once `TechChip` on the eager Home page pulled in all of `TECH_ICONS` (+15.7 KB; 131.3 KB measured).
+
+  **If the cap is exceeded later, the fix is code-splitting** (e.g. lazy-load a below-the-fold Home section or the tech-icon registry, keeping chip sizes reserved so nothing shifts). **Never raise the cap again, and don't trim the registries.**
 - Images: WebP/AVIF at ≤ 2× display size. Avatar ≤ 30 KB, project images ≤ 120 KB. Always `width`/`height`.
 - Avatar preloaded in `index.html` (LCP element).
 - No layout shift on theme toggle, route change, or font load.
@@ -1144,7 +1393,10 @@ At **320, 375, 414, 768, 1024, 1440, 1920px**, light and dark:
 - [ ] Chips, socials, buttons wrap cleanly.
 - [ ] Project grid: 1 column < 640px, 2 columns ≥ 640px; cards in a row align.
 - [ ] Resume: Drive preview iframe at every width without overflow (capped at `85dvh`); buttons wrap.
-- [ ] Tap targets ≥ 36px; no hover-only information.
+- [ ] Tap targets ≥ 36px (social icons, theme toggle, accordion chevron); no hover-only information.
+- [ ] Experience: logo and letter tiles the same size at every width; title row, labels, chips, bullets and links share the content column's left edge.
+- [ ] Home accordion: Enter/Space toggles; `aria-expanded` and the aria-label update; a closed panel's links aren't reachable with Tab (`inert`); focus rings inside an open panel aren't clipped; reduced motion → opens instantly.
+- [ ] Rich-text links: visible focus; external ones open in a new tab; `/path` ones navigate client-side.
 - [ ] iOS Safari: no white flash, sticky header OK, `dvh` correct with toolbar.
 - [ ] Keyboard: skip link, full Tab order, focus always visible.
 - [ ] OS reduced-motion on → no animation.
@@ -1173,6 +1425,10 @@ Add `public/robots.txt` and a static `public/sitemap.xml` with the 4 routes.
 
 ```text
 Add a job          → src/data/experience.ts   append { company, role, start: "YYYY-MM", end: null | "YYYY-MM", … }
+Company logo       → public/logos/name.svg     then logo: "/logos/name.svg" on the job (square .svg/.webp; omit → letter tile)
+Links under a job  → src/data/experience.ts   links: [{ label: "Case study", url: "https://…" }]
+Bold / links       → bio, highlights, project descriptions: **bold** and [label](url) only.
+                     Lead with the result; at most ONE bold metric/outcome per bullet; real numbers only.
 Add a project      → src/data/projects.ts     append { title, description, tech, links, featured }
 Add/remove social  → src/data/socials.ts      add/remove { platform: "leetcode", url }
 Add a skill        → src/data/skills.ts       add "Name" to a group
@@ -1190,17 +1446,17 @@ New icon support   → src/lib/icons.ts         one line in SOCIAL_ICONS or TECH
 1. [ ] Phase 1 — audit, deps, alias, tokens, `index.html`, ThemeContext
 2. [ ] Phase 2 — types, data files, `dates.ts`, `icons.ts`, `validate.ts`
 3. [ ] Phase 3 — router, `main.tsx`, RootLayout, Container, Header, ThemeToggle, Footer, SocialLinks
-4. [ ] Phase 4 — Section, PageHeader, Reveal, TechChip, StatusBadge, ExternalLink, CopyEmail
-5. [ ] Phase 5 — Home, Experience, Projects, Resume, NotFound (+ titles/meta)
+4. [ ] Phase 4 — Section, PageHeader, Reveal, TechChip, StatusBadge, ExternalLink, CopyEmail, RichText
+5. [ ] Phase 5 — Home, Experience (ExperienceItem, CompanyLogo, accordion), Projects, Resume, NotFound (+ titles/meta)
 6. [ ] Phase 6 — motion + polish
 7. [ ] Phase 7 — performance pass
 8. [ ] Phase 8 — responsive / a11y QA
 9. [ ] Phase 9 — deploy config, robots, sitemap, README
+10. [ ] Optional — dawn/dusk theme transition (§7.1), on branch `feat/theme-transition`
 
-After each phase: `pnpm build` and `pnpm lint` must pass. Report what changed and what the owner must supply (avatar, resume PDF, project images, real data).
+After each phase: `pnpm build` and `pnpm lint` must pass. Report what changed and what the owner must supply (avatar, the resume's Google Drive share link, company logos, project images, real data).
 
 ### Future (only if asked)
 - Multiple roles under one company (promotions) via optional `roles: []`.
 - Project filter by tech.
 - MDX blog.
-- View Transitions API for the theme toggle (progressive enhancement).

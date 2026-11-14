@@ -5,6 +5,7 @@ import type { Project } from "@/types/content";
  * Required: title, description. Optional: year, tech[], links{live,github}, image, featured.
  * image: path in /public, 16:9 webp (e.g. 1280×720), e.g. "/projects/my-app.webp"
  * featured: true → shown on Home.
+ * description supports rich text: **bold** and [label](url) (same rules as experience highlights).
  */
 export const projects = [
   {

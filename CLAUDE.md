@@ -70,24 +70,25 @@ pnpm add -D <pkg>   # dev dep
 src/
   data/          # ← ALL editable content: site, navigation, socials, experience, projects, skills
   types/         # content.ts — shared content types
-  lib/           # pure helpers: dates.ts, icons.ts, cn.ts, theme.ts, validate.ts, resume.ts
+  lib/           # pure helpers: dates.ts, icons.ts, cn.ts, theme.ts, validate.ts, resume.ts, richText.ts
   hooks/         # useCopyToClipboard.ts
   context/       # ThemeContext.tsx
   components/
     layout/      # RootLayout, Header, Footer, Container
-    ui/          # ThemeToggle, SocialLinks, TechChip, Section, StatusBadge, ExternalLink, CopyEmail, Reveal, PageHeader
-    experience/  # ExperienceItem
+    ui/          # ThemeToggle, SocialLinks, TechChip, Section, StatusBadge, ExternalLink, CopyEmail, Reveal, PageHeader, RichText
+    experience/  # ExperienceItem, CompanyLogo
     projects/    # ProjectCard
   pages/         # Home, Experience, Projects, Resume, NotFound
   router.tsx
   main.tsx
   index.css      # Tailwind import, tokens, keyframes
-public/          # avatar.webp, favicon.svg, og.png, robots.txt
+public/          # avatar.webp, favicon.svg, og.png, robots.txt, logos/ (company logos)
 ```
 
 - Import alias: `@/` → `src/` (e.g. `import { site } from "@/data/site"`).
 - Components never hard-code personal content (names, links, dates, bullets). Read from `src/data/`.
 - Derived values (sorting, "Present", durations, "Working" badge) are computed in `src/lib/`, never stored in data.
+- Owner-written text with formatting (bio, experience highlights, project descriptions) is rendered with `<RichText>`: only `**bold**` and `[label](url)`. Never `dangerouslySetInnerHTML`, never auto-bold numbers.
 - One component per file. Pages use `export default` (needed for lazy routes); everything else uses named exports.
 
 ## TypeScript rules
@@ -108,7 +109,7 @@ public/          # avatar.webp, favicon.svg, og.png, robots.txt
 
 ## Design system rules (strict)
 
-- **Colors: semantic tokens only** — `bg-bg`, `text-fg`, `text-muted`, `bg-subtle`, `border-border`, `text-accent` (and opacity modifiers like `bg-bg/80`). Never use raw palette classes (`text-zinc-500`, `bg-white`, `bg-[#fff]`) in components. This is what keeps light/dark consistent.
+- **Colors: semantic tokens only** — `bg-bg`, `text-fg`, `text-muted`, `bg-subtle`, `border-border`, `text-accent`, `bg-logo` (company-logo tiles only) (and opacity modifiers like `bg-bg/80`). Never use raw palette classes (`text-zinc-500`, `bg-white`, `bg-[#fff]`) in components. This is what keeps light/dark consistent.
 - Dark mode is class-based (`.dark` on `<html>`) via `@custom-variant dark`, set before first paint by the inline script in `index.html`.
 - **Container:** all page content sits inside `<Container>` = `mx-auto w-full max-w-3xl px-5 sm:px-6`. No other content max-widths.
 - **Type scale (do not invent sizes):**
@@ -134,11 +135,13 @@ public/          # avatar.webp, favicon.svg, og.png, robots.txt
 ## Animation rules (strict)
 
 - Animate only `opacity` and `transform`. Never width/height/top/left/box-shadow/filter on large areas.
-- Durations: 150–200ms hover/press, 400–600ms enter. Easing `cubic-bezier(0.22, 1, 0.36, 1)`.
+  - **Single exception:** the Home experience accordion animates `grid-template-rows` (`grid-rows-[0fr]` ↔ `grid-rows-[1fr]`). Nowhere else may layout be animated.
+- Durations: 150–200ms hover/press, **300ms state toggles** (theme icon swap, accordion open/close, chevron rotation), 400–600ms enter. Easing `cubic-bezier(0.22, 1, 0.36, 1)`.
 - Enter animations: `animate-fade-up` via `<Reveal step={n}>`, stagger ≤ 6 steps × 60ms. On mount only — no scroll-triggered reveals.
 - Every animation disabled under `prefers-reduced-motion` (`motion-reduce:animate-none`, global CSS guard).
 - Never `transition-all`. Use `transition-colors`, `transition-opacity`, `transition-transform`, or explicit `transition-[opacity,transform]`.
 - Theme switching adds `.no-transitions` for one frame so the page doesn't fade/lag.
+- **View Transitions API:** allowed only for the dawn/dusk theme transition (IMPLEMENTATION.md §7.1, optional Step 19), and only once that step is merged from `feat/theme-transition`. Its `clip-path` animation on the root snapshots is part of that exception. Not for route changes or anything else.
 
 ## Accessibility
 
@@ -153,10 +156,14 @@ public/          # avatar.webp, favicon.svg, og.png, robots.txt
 | Task | File | How |
 |---|---|---|
 | Add a job | `src/data/experience.ts` | Append an object. `end: null` = current job → "Working" badge + "Present". Order doesn't matter (auto-sorted). |
+| Company logo | `public/logos/` + `src/data/experience.ts` | Put a square `.svg`/`.webp` in `public/logos/`, set `logo: "/logos/name.svg"`. No logo → letter tile. |
+| Links under a job | `src/data/experience.ts` | `links: [{ label: "Case study", url: "https://…" }]`. Shown after the bullets. |
+| Bold / links in text | bio, highlights, project descriptions | `**bold**` and `[label](url)` only. Lead with the result; at most **one** bold metric/outcome per bullet; not every bullet needs one; real numbers only. |
 | Add a project | `src/data/projects.ts` | Append an object. `featured: true` shows it on Home. |
 | Add/remove a social | `src/data/socials.ts` | Add/remove `{ platform, url }`. Icon picked from `platform` (autocompletes). Unknown platform → generic link icon. |
 | Add a skill | `src/data/skills.ts` | Add a string like `"Next.js"` to a group. Known names get an icon; unknown → text-only chip. |
-| Name/bio/email/resume | `src/data/site.ts` | Edit fields. |
+| Name/bio/email | `src/data/site.ts` | Edit fields. |
+| Update resume | Google Drive + `src/data/site.ts` | Upload a new version of the same Drive file (Manage versions); the link stays the same. Bump `site.resume.updated`. New file → paste its share link into `site.resume.driveUrl`. |
 | Nav items | `src/data/navigation.ts` | Edit array. |
 | Support a new icon | `src/lib/icons.ts` | Add one entry to `SOCIAL_ICONS` or `TECH_ICONS`. |
 
@@ -170,6 +177,7 @@ If you change a data shape, update `src/types/content.ts`, the comment header in
 4. Keyboard-navigable with visible focus.
 5. No new dependencies without approval; no raw color classes in components.
 6. Content changes still only require editing `src/data/`.
+7. Initial JS ≤ **140 KB gzip** (hard cap). If a change exceeds it, code-split; never raise the cap or trim the icon registries.
 
 ## Style
 

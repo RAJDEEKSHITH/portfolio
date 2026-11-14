@@ -2,7 +2,7 @@ import type { Site } from "@/types/content";
 
 /**
  * Global site info. Edit freely.
- * Required: name, role, bio[] (paragraphs), email, avatar (path or null), url,
+ * Required: name, role, bio[] (paragraphs; rich text: **bold** and [label](url)), email, avatar (path or null), url,
  *   resume { driveUrl, updated: "YYYY-MM" }, home { experienceLimit, projectLimit } (both ≥ 1)
  * resume.driveUrl: Google Drive share link (Share → "Anyone with the link" → Viewer → Copy link).
  *   To update the resume, upload a new version in Drive (Manage versions); the link stays the same.

@@ -14,6 +14,7 @@
   --subtle: #f4f4f5; /* chip / hover fill */
   --border: #e4e4e7;
   --accent: #16a34a; /* status dot + tiny highlights only */
+  --logo: #ffffff; /* company-logo tile fill (most logos are drawn for white) */
   color-scheme: light;
 }
 .dark {
@@ -23,10 +24,11 @@
   --subtle: #18181b;
   --border: #27272a;
   --accent: #22c55e;
+  --logo: #f4f4f5;
   color-scheme: dark;
 }
 
-/* Utilities: bg-bg, text-fg, text-muted, bg-subtle, border-border, text-accent (+ /opacity) */
+/* Utilities: bg-bg, text-fg, text-muted, bg-subtle, border-border, text-accent, bg-logo (+ /opacity) */
 @theme inline {
   --color-bg: var(--bg);
   --color-fg: var(--fg);
@@ -34,6 +36,7 @@
   --color-subtle: var(--subtle);
   --color-border: var(--border);
   --color-accent: var(--accent);
+  --color-logo: var(--logo);
 }
 
 @theme {

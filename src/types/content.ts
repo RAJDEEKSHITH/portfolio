@@ -7,6 +7,7 @@ export type Site = {
   name: string;
   role: string;
   tagline?: string;
+  /** Paragraphs. Rich text: **bold** and [label](url) — see components/ui/RichText */
   bio: string[];
   email: string;
   location?: string;
@@ -28,6 +29,8 @@ export type Social = {
 export type WorkMode = "On-site" | "Remote" | "Hybrid";
 export type EmploymentType = "Full-time" | "Part-time" | "Internship" | "Contract" | "Freelance";
 
+export type ExperienceLink = { label: string; url: string };
+
 export type Experience = {
   company: string;
   role: string;
@@ -38,12 +41,18 @@ export type Experience = {
   mode?: WorkMode;
   type?: EmploymentType;
   url?: string;
+  /** square logo in /public/logos, .svg or .webp, e.g. "/logos/acme.svg". No logo → monogram tile */
+  logo?: string;
   tech?: string[];
+  /** Rich text: **bold** and [label](url) */
   highlights?: string[];
+  /** Shown after the highlights (inside the expandable panel on Home) */
+  links?: ExperienceLink[];
 };
 
 export type Project = {
   title: string;
+  /** Rich text: **bold** and [label](url) */
   description: string;
   year?: number;
   tech?: string[];
