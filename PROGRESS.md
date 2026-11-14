@@ -10,34 +10,43 @@ Each step lists the `IMPLEMENTATION.md` sections to read. Read only those.
 
 _Overwrite this section at the end of every step._
 
-- **Last completed step:** Step 4 — Types + data files
+- **Last completed step:** Step 5 — Lib helpers: dates, icons, validator
 - **What was done:**
-  - Added `src/types/content.ts` (§3.1) and the six data files `site`, `navigation`, `socials`, `experience`, `projects` and `skills` (§3.2 to §3.7). Each data file has a schema comment header, placeholder content and `satisfies <Type>`. Nothing renders them yet; the page is still the Step 3 placeholder.
-  - **Owner change during this step: the resume moved from a PDF in `/public` to a Google Drive link.** `Site.resume` is now `{ driveUrl: string; updated: YearMonth }`, and `site.ts` holds the placeholder `driveUrl: "<paste Google Drive share link>"`. A new `src/lib/resume.ts` has `getDriveId(url)` and `getResumeLinks(url)`, which returns `{ preview, view, download }` Drive URLs, or `null` if there's no ID.
-  - Docs updated to match: IMPLEMENTATION.md §1, §3.1, §3.2, §3.10, §6.5, §9 and §11; PROGRESS.md Step 13; CLAUDE.md Architecture (`resume.ts` added to `lib/`, `resume.pdf` removed from `public/`).
-  - **Owner change: CLAUDE.md has a new "Plugins, skills & MCP servers" section.** Never install, enable or invoke plugins, skills or MCP servers unless the owner asks in that session. IMPLEMENTATION.md and the `src/index.css` tokens are the only design authority, and design skills are audit-only. No plugin or skill has been used in this project. The frontend-design plugin is enabled in the owner's user-level `~/.claude/settings.json`; it must not be used.
-- **Files created/changed:** new `src/types/content.ts`, `src/data/{site,navigation,socials,experience,projects,skills}.ts`, `src/lib/icons.ts` (**partial**, see below) and `src/lib/resume.ts`. Changed `IMPLEMENTATION.md`, `CLAUDE.md` and `PROGRESS.md`. Deleted `src/types/.gitkeep` and `src/data/.gitkeep`.
-- **Verified** (re-run after the resume change):
+  - Added `src/lib/dates.ts`, copied from §3.8.
+  - **`src/lib/icons.ts` is now complete**, per §3.9. Step 4 had only the social registry; this step added `toKey`, `TECH_ICONS`, `FALLBACK_SOCIAL`/`FaLink`, `getSocial`, `getTechIcon` and `isKnownPlatform`, and removed the "Step 4" comment.
+  - Added `src/lib/validate.ts`, which runs every §3.10 check, including the Drive-ID check added with the resume change.
+  - `main.tsx` calls `validateContent()` through a dynamic import inside `if (import.meta.env.DEV)`, as in §4.2.
+- **Files created/changed:** new `src/lib/dates.ts` and `src/lib/validate.ts`; changed `src/lib/icons.ts` and `src/main.tsx`. A temporary `src/components/ui/ExperienceTest.tsx` was created for verification and has been **deleted**, along with its import and JSX in `main.tsx`.
+- **Verified:**
   - `pnpm build` and `pnpm lint` are clean.
-  - **Wrong case is caught:** changing `mode: "On-site"` to `mode: "remote"` in `experience.ts` gives `TS2820: Type '"remote"' is not assignable to type 'WorkMode | undefined'. Did you mean '"Remote"'?` on the data line. The edit was reverted and `tsc` is clean again.
-  - **Autocomplete works:** asking the TypeScript language service (what VS Code uses) for completions at `platform: "` in an in-memory edit of `socials.ts` returns all 19 known platforms (x, twitter, linkedin, github, …, email, website).
-  - **Unknown platforms are accepted:** `{ platform: "foo", url }` still type-checks, as §3.4 requires. That edit was reverted too.
-  - **The old shape is rejected:** `resume: { file: "/resume.pdf", … }` in `site.ts` is now a TS error (TS2353). Reverted.
-  - **`getDriveId` works on 9 sample links:** it returns the ID for `/file/d/<ID>/view?usp=sharing`, `…?usp=drive_link`, `/file/d/<ID>` with no trailing slash, `open?id=<ID>`, `uc?export=download&id=<ID>` and a Docs `/document/d/<ID>/edit` link. It returns `null` for the placeholder text, an empty string and a folder URL.
+  - **Icon exports:** all 46 react-icons names in the spec exist in react-icons 5.7.0. That covers 13 `fa6`, 30 `si`, and `LuSun`/`LuMoon`/`LuArrowUpRight` for Steps 7 and 9, so nothing needed swapping. `SiGsap` also exists if the newer GSAP logo is ever wanted; the spec's `SiGreensock` is kept.
+  - **Helper unit tests (Node, 19 checks, all pass):**
+    - `formatMonth` and `formatRange`, including "Present".
+    - Inclusive durations: Jan–Mar is "3 mos", one month is "1 mo", 12 months is "1 yr", 13 is "1 yr 1 mo", and end before start gives "".
+    - `YEAR_MONTH_RE` rejects `2026-1`, `2026-13`, `2026-00`, `26-01` and `2026/01`.
+    - `sortExperience` puts current jobs first, then sorts by newest start, without mutating its input.
+    - `toKey`: "Next.js"→"nextjs", "C++"→"c++", "C#"→"c#".
+    - Tech icons: "Zustand"→none, "AWS" and "GSAP"→found. Socials: "foo" falls back to "Link", "Dev.to" maps to DEV.
+  - **Temporary render, checked in headless Chrome (dev):** it showed `Company A | Jan 2026 – Present | 11 mos | Working`, then `Company B | Aug 2025 – Dec 2025 | 5 mos`.
+  - **Unknown platform:** adding `{ platform: "foo" }` produced exactly one `console.warn`, listing every problem found (the unknown platform and the placeholder Drive link).
+  - **All validator rules:** with deliberately broken data, one warning listed all 8 problems: end before start, a bad start, a bad `resume.updated`, a duplicate social URL, a duplicate project title, a bad project image path, a bad avatar path, and `projectLimit: 0`. A valid Drive link and `"GitHub"` in mixed case raised nothing. All data was restored, and `git status` shows it matches the committed version.
+  - **Production:** a build with the bad data in place logged **0** console messages in headless Chrome, and no validator code is in `dist`, so the dev branch is removed from the build.
 - **Decisions / deviations from spec:**
-  - **`src/lib/icons.ts` is PARTIAL. Step 5 completes it.** `content.ts` imports `SocialPlatform`, which is derived from `SOCIAL_ICONS`, and autocomplete is a Step 4 check. So `icons.ts` holds only `SOCIAL_ICONS` (exactly as in §3.9) plus `SocialPlatform`. Those 18 fa6/si imports build fine on react-icons 5.7.0. **Step 5 must add** `toKey`, `TECH_ICONS` (with the remaining `Si*` imports and `FaAws`), `FALLBACK_SOCIAL`/`FaLink`, `getSocial`, `getTechIcon` and `isKnownPlatform`, and delete the "Step 4" comment at the top of the file.
-  - **`src/lib/resume.ts` was created now, before Step 13.** It's tiny and fully specified, and the Step 5 validator needs `getDriveId` (§3.10: warn when no Drive file ID is found). Step 13 only needs to build the page that uses it.
-  - **The resume iframe uses a wrapper, as agreed with the owner (§6.5).** `mt-8` and `bg-subtle` sit on a wrapper `div`, not the iframe, because an iframe's own background would hide the "Loading preview…" text behind it. The iframe gets `relative block`, and the loading text is `aria-hidden`.
-  - §3.10 and §9 were also updated for the Drive change; the owner didn't list them, but they'd otherwise contradict §6.5. §3.10 drops the `site.resume.file` path check and adds the Drive-ID check. §9 now expects the preview at every width.
-  - Comment headers go slightly beyond the spec: `site.ts` has a required/optional list, Drive sharing instructions and a reminder to sync `index.html`; `experience.ts` lists the allowed `mode`/`type` values; `projects.ts` has an `image` path example.
+  - **The validator issues one `console.warn` call** with a bulleted list, not `console.group`. §3.10 asks for a "single grouped warn", and one call keeps it to exactly one console entry.
+  - Inside `validateContent`, the data is assigned to the declared types (`Site`, `Experience[]`, …). This keeps the checks type-safe whatever literal shapes the data files have, for example `avatar: null` or projects without `image`.
+  - **`src/lib/resume.ts` was created in Step 4, before Step 13.** The validator uses `getDriveId`. Step 13 only needs to build the page that uses it.
+  - **The resume iframe uses a wrapper, as agreed with the owner (§6.5).** `mt-8` and `bg-subtle` sit on a wrapper `div`, because an iframe's own background would hide the "Loading preview…" text behind it.
+  - **Owner rule (CLAUDE.md "Plugins, skills & MCP servers"):** never install, enable or invoke plugins, skills or MCP servers unless asked in that session. IMPLEMENTATION.md and the `src/index.css` tokens are the only design authority. The frontend-design plugin is enabled in the owner's user-level settings and must not be used. None has been used so far.
+  - From Step 4: the data-file comment headers go slightly beyond the spec (required/optional lists, allowed `mode`/`type` values, Drive sharing instructions).
   - From Step 3: `eslint.config.js` allows the `useTheme` export via `allowExportNames`. `src/components/ui/ThemeTest.tsx` is **temporary**; Step 6 deletes it and its import and JSX in `main.tsx`.
   - From Step 2: `@source not "../*.md";` in `index.css` stops Tailwind generating classes from the docs. The avatar preload in `index.html` is commented out until `public/avatar.webp` exists.
   - From Step 1: no `baseUrl` in `tsconfig.app.json` (TS 6 rejects it with TS5101; `paths` alone works). `"strict": true` is set explicitly. `public/favicon.svg` is still the Vite logo until Step 14.
 - **Owner needs to provide:** real content in `src/data/*`; the resume's Google Drive share link in `site.resume.driveUrl` (Share → "Anyone with the link" → Viewer); `public/avatar.webp`, `public/og.png` (1200×630; `index.html` already points to it), project images. These can come later; placeholders are fine. The `<title>`, description and OG text in `index.html` are static placeholders ("Your Name"), so update them by hand to match `site.ts`.
 - **Known issues / TODO:**
   - **The placeholder data points at files that don't exist yet:** `site.avatar` (`/avatar.webp`) and project image `/projects/project-one.webp`. Once Steps 11 and 12 render them they'll 404, showing broken images and console errors. Either add the files, or set `avatar: null` and drop `image` until real assets exist.
-  - Until a real Drive link is pasted, the Step 5 validator will warn in dev about `resume.driveUrl`, and the Step 13 Resume page will show "Resume coming soon." Both are intended.
+  - **Expected dev warning:** until a real Drive link is in `site.resume.driveUrl`, every dev page load shows one `[content]` warning about it, and the Step 13 Resume page will show "Resume coming soon." That's intended, but it means "no console warnings in dev" (Definition of done) only holds once the link is pasted. Treat that single warning as expected when checking later steps.
   - `cn()` isn't used anywhere yet; the first callers arrive in Step 6 (`Container`).
+  - `dates.ts` and `icons.ts` aren't imported by anything rendered yet, so they're tree-shaken out of the production bundle (JS unchanged at 221.25 kB, 69.29 kB gzip). They'll show up in Step 6 onwards.
   - Git on Windows warns about LF→CRLF. If you want LF everywhere (the Prettier default), add `.gitattributes` with `* text=auto eol=lf`. I didn't add it; ask if you want it.
   - Delete the `.gitkeep` files as real files land in each folder.
 
@@ -69,7 +78,7 @@ _Overwrite this section at the end of every step._
   `src/types/content.ts` and all `src/data/*.ts` with schema comment headers and placeholder content.
   **Done when:** `pnpm build` passes; `mode: "remote"` (wrong case) causes a TS error (test it, then revert); typing `platform: "` in socials autocompletes.
 
-- [ ] **Step 5: Lib helpers: dates, icons, validator**
+- [x] **Step 5: Lib helpers: dates, icons, validator**
   Read: §3.8, §3.9, §3.10
   `dates.ts`, `icons.ts` (verify every react-icons export exists; swap or remove any that are missing), `validate.ts`, and the dev-only call in `main.tsx`.
   **Done when:** build passes; a quick temporary render shows sorted experience with "Present"/durations; an unknown platform triggers one grouped dev warning; nothing is logged in a production build.

@@ -19,3 +19,7 @@ createRoot(document.getElementById("root")!).render(
     </ThemeProvider>
   </StrictMode>,
 );
+
+if (import.meta.env.DEV) {
+  void import("@/lib/validate").then((m) => m.validateContent());
+}
