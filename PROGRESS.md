@@ -10,12 +10,19 @@ Each step lists the `IMPLEMENTATION.md` sections to read. Read only those.
 
 _Overwrite this section at the end of every step._
 
-- **Last completed step:** none (project not started)
-- **What was done:** n/a
-- **Files created/changed:** n/a
-- **Decisions / deviations from spec:** n/a
+- **Last completed step:** Step 1 — Project setup
+- **What was done:** Audited the scaffold against §2.1. Installed `react-router-dom@7.18.5`, `react-icons@5.7.0`, `@fontsource-variable/hanken-grotesk@5.3.0`, `@fontsource-variable/jetbrains-mono@5.3.0` (`@types/node@24` was already present). Set up the `@/` → `src/` alias in Vite and tsconfig and checked it in both (a temporary `@/lib/…` import built OK; a bad `@/` path failed `tsc`). Removed the template boilerplate. Created the folder structure from CLAUDE.md → Architecture (`.gitkeep` in each empty folder so git tracks it). `main.tsx` renders a plain `<p>Hello</p>`.
+- **Files created/changed:** `vite.config.ts` (alias, double quotes), `tsconfig.app.json` (`paths`, explicit `"strict": true`), `src/main.tsx` (Hello placeholder), `README.md` (short stub; the full guide comes in Step 17), `package.json` + `pnpm-lock.yaml`. Deleted: `src/App.tsx`, `src/assets/{hero.png,react.svg,vite.svg}`, `public/icons.svg`. Added: `src/{data,types,lib,hooks,context,pages}/.gitkeep`, `src/components/{layout,ui,experience,projects}/.gitkeep`.
+- **Decisions / deviations from spec:**
+  - **No `baseUrl` in `tsconfig.app.json`.** TypeScript 6.0.3 rejects it with error TS5101 (deprecated). `paths` alone works because it resolves relative to the tsconfig. Use this in place of the §2.3 snippet.
+  - Added `"strict": true` explicitly. TS 6 turns it on by default, but the template didn't list it.
+  - Kept `public/favicon.svg` (the Vite logo) so `/favicon.svg` doesn't 404. Step 14 replaces it with the monogram.
+  - `src/index.css` is still just `@import "tailwindcss";`. Step 2 writes the tokens.
+  - The scaffold uses newer versions than the spec assumed: Vite 8 (Rolldown), `@vitejs/plugin-react` 6, ESLint 10, TS 6. They all work, nothing to change.
 - **Owner needs to provide:** real content in `src/data/*`, `public/avatar.webp`, `public/resume.pdf`, project images (can come later; placeholders are fine)
-- **Known issues / TODO:** none
+- **Known issues / TODO:**
+  - Git on Windows warns about LF→CRLF. If you want LF everywhere (the Prettier default), add `.gitattributes` with `* text=auto eol=lf`. I didn't add it; ask if you want it.
+  - Delete the `.gitkeep` files as real files land in each folder.
 
 ---
 
@@ -23,7 +30,7 @@ _Overwrite this section at the end of every step._
 
 ### Foundation
 
-- [ ] **Step 1: Project setup**
+- [x] **Step 1: Project setup**
   Read: §2.1, §2.2, §2.3
   Audit `package.json` (React 19, TS, Tailwind v4, pnpm). Install deps. Set up the `@/` alias in Vite + `tsconfig.app.json`. Delete Vite boilerplate. Create the empty folder structure from `CLAUDE.md` → Architecture.
   **Done when:** `pnpm build` passes; `@/` imports resolve; no boilerplate left; app renders a plain "Hello" placeholder.
