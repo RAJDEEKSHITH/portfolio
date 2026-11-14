@@ -70,7 +70,7 @@ pnpm add -D <pkg>   # dev dep
 src/
   data/          # ← ALL editable content: site, navigation, socials, experience, projects, skills
   types/         # content.ts — shared content types
-  lib/           # pure helpers: dates.ts, icons.ts, cn.ts, theme.ts, validate.ts
+  lib/           # pure helpers: dates.ts, icons.ts, cn.ts, theme.ts, validate.ts, resume.ts
   hooks/         # useCopyToClipboard.ts
   context/       # ThemeContext.tsx
   components/
@@ -82,7 +82,7 @@ src/
   router.tsx
   main.tsx
   index.css      # Tailwind import, tokens, keyframes
-public/          # resume.pdf, avatar.webp, favicon.svg, og.png, robots.txt
+public/          # avatar.webp, favicon.svg, og.png, robots.txt
 ```
 
 - Import alias: `@/` → `src/` (e.g. `import { site } from "@/data/site"`).
