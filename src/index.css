@@ -1,1 +1,94 @@
 @import "tailwindcss";
+
+/* Don't generate classes from the spec/docs (CLAUDE.md, IMPLEMENTATION.md, …) */
+@source not "../*.md";
+
+/* class-based dark mode */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Raw theme values — the ONLY place colors are defined */
+:root {
+  --bg: #fafafa;
+  --fg: #18181b;
+  --muted: #71717a; /* ≥ 4.5:1 on --bg */
+  --subtle: #f4f4f5; /* chip / hover fill */
+  --border: #e4e4e7;
+  --accent: #16a34a; /* status dot + tiny highlights only */
+  color-scheme: light;
+}
+.dark {
+  --bg: #0a0a0a;
+  --fg: #fafafa;
+  --muted: #a1a1aa;
+  --subtle: #18181b;
+  --border: #27272a;
+  --accent: #22c55e;
+  color-scheme: dark;
+}
+
+/* Utilities: bg-bg, text-fg, text-muted, bg-subtle, border-border, text-accent (+ /opacity) */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-subtle: var(--subtle);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+}
+
+@theme {
+  --font-sans: "Hanken Grotesk Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, SFMono-Regular, monospace;
+
+  --animate-fade-up: fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-fade-in: fade-in 0.4s ease-out both;
+
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+    scrollbar-gutter: stable; /* no horizontal jump between short and long pages */
+  }
+  body {
+    @apply bg-bg font-sans text-fg antialiased;
+  }
+  ::selection {
+    @apply bg-fg text-bg;
+  }
+}
+
+/* Applied for one frame while switching theme so nothing animates */
+.no-transitions,
+.no-transitions * {
+  transition: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

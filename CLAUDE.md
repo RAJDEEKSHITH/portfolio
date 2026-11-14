@@ -18,8 +18,8 @@ When the owner says **"continue"** (or "next", "go"):
 2. Do **exactly one step**. Don't start the next one, even if it looks small.
 3. Verify: `pnpm build` + `pnpm lint` pass, plus the step's "Done when" checks.
 4. Update `PROGRESS.md`: tick the step `[x]`, then rewrite **Handoff notes** (what was done, files created or changed, decisions or deviations, anything the owner must provide, known issues).
-5. If this is a git repo: `git add -A && git commit -m "step N: <title>"`.
-6. Stop and reply with a short summary: what's done, how to see it (`pnpm dev` → which URL), and the next step's title.
+5. Never run git add, git commit, git push, git reset or any other git command that changes the repo. The owner commits manually. Read-only git (git status, git diff) is fine.
+6. Stop and reply with a short summary: what's done, how to see it (`pnpm dev` → which URL), the next step's title, and a suggested commit message (e.g. `step 7: header + theme toggle`) for the owner to use.
 
 Other commands the owner may use:
 - **"step N"**: do that specific step (check that the steps it depends on are ticked first).
