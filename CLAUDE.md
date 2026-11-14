@@ -47,6 +47,11 @@ If a step can't be finished, leave it unticked, write exactly where it stopped i
 - **No blog, Ctrl+K search, or analytics** unless the owner asks.
 - Do not add any dependency not listed in `IMPLEMENTATION.md` without asking first.
 
+## Plugins, skills & MCP servers
+
+- Never install, enable or invoke plugins, skills or MCP servers unless the owner explicitly asks in that session.
+- IMPLEMENTATION.md and the tokens in src/index.css are the only design authority. Design skills may only be used in audit mode, never to change the palette, type scale, spacing, layout or structure.
+
 ## Commands
 
 ```bash

@@ -37,7 +37,7 @@ Starting point: Vite React + TypeScript project with Tailwind v4 already configu
 | Icons | `react-icons` + registry keyed by normalized name | Owner writes `"leetcode"` or `"Next.js"`; unknown names degrade gracefully. |
 | Fonts | `@fontsource-variable/*` (self-hosted) | No third-party request, no layout shift. |
 | Colors | Six semantic CSS-variable tokens | Components can't drift between themes. |
-| Resume | PDF in `/public`; iframe on `md+`, buttons on mobile | iOS shows only page 1 of embedded PDFs; Android Chrome doesn't render them inline. |
+| Resume | Google Drive share link (`site.resume.driveUrl`); Drive preview iframe on all sizes + Download / Open in Google Drive buttons | Updating = upload a new version in Drive, the link never changes. Drive's viewer works on phones, unlike an embedded PDF (iOS shows only page 1; Android Chrome doesn't render it inline). |
 | Tech chips | Icon + label, monochrome | More readable than icon-only tiles; black brand icons (Next.js, Vercel) don't vanish in dark mode. |
 
 ---
@@ -331,7 +331,8 @@ export type Site = {
   location?: string;
   avatar: string | null;
   url: string;
-  resume: { file: string; updated: YearMonth };
+  /** driveUrl: Google Drive share link ("Anyone with the link"); preview/view/download URLs are derived in lib/resume.ts */
+  resume: { driveUrl: string; updated: YearMonth };
   home: { experienceLimit: number; projectLimit: number };
 };
 
@@ -392,7 +393,8 @@ export const site = {
   avatar: "/avatar.webp", // null to hide
   url: "https://yourdomain.com",
   resume: {
-    file: "/resume.pdf", // put the PDF in /public
+    // Drive → Share → "Anyone with the link" (Viewer) → Copy link
+    driveUrl: "<paste Google Drive share link>",
     updated: "2026-11",
   },
   home: {
@@ -668,7 +670,8 @@ Checks:
 - `end` is not before `start`
 - unknown social platforms (`!isKnownPlatform`)
 - duplicate social URLs / duplicate project titles (would cause React key collisions)
-- project `image` / `site.avatar` / `site.resume.file` start with `/` or `http`
+- project `image` / `site.avatar` start with `/` or `http`
+- `getDriveId(site.resume.driveUrl)` (from `lib/resume.ts`, §6.5) finds a file ID; otherwise warn that the Resume page will show "Resume coming soon."
 - `site.home.*Limit` ≥ 1
 
 **Phase 2 acceptance**
@@ -1026,12 +1029,55 @@ Missing optional fields must render nothing — no empty rows, no stray "·".
 
 ### 6.5 Resume (`/resume`)
 
+The resume PDF lives in Google Drive, shared as "Anyone with the link → Viewer". `site.resume.driveUrl` holds the share link, and every URL is derived from its file ID. To update the resume, upload a new version in Drive (Manage versions); the link stays the same.
+
+`src/lib/resume.ts`:
+
+```ts
+const DRIVE_ID_RE = /\/d\/([\w-]+)|[?&]id=([\w-]+)/;
+
+export type ResumeLinks = { preview: string; view: string; download: string };
+
+/** File ID from ".../file/d/<ID>/..." or "...?id=<ID>"; null if neither is present. */
+export const getDriveId = (url: string): string | null => {
+  const m = DRIVE_ID_RE.exec(url);
+  return m?.[1] ?? m?.[2] ?? null;
+};
+
+export const getResumeLinks = (url: string): ResumeLinks | null => {
+  const id = getDriveId(url);
+  if (!id) return null;
+  return {
+    preview: `https://drive.google.com/file/d/${id}/preview`,
+    view: `https://drive.google.com/file/d/${id}/view`,
+    download: `https://drive.google.com/uc?export=download&id=${id}`,
+  };
+};
+```
+
+Page (`const links = getResumeLinks(site.resume.driveUrl)`):
+
 - `PageHeader` "Resume", subtitle `Updated ${formatMonth(site.resume.updated)}`.
-- Action row `flex flex-wrap gap-3`:
-  - **Download** `<a href={file} download>` — `h-10 px-4 rounded-lg bg-fg text-bg text-sm font-medium inline-flex items-center gap-2 transition-opacity hover:opacity-90`
-  - **Open in new tab** — same size, `border border-border hover:bg-subtle transition-colors`
-- Desktop: `<iframe src={`${file}#view=FitH`} title="Resume (PDF)" loading="lazy" className="mt-8 hidden w-full rounded-lg border border-border bg-white aspect-[1/1.414] md:block" />`
-- Mobile (`md:hidden`): short note "Tap Open to view the full PDF." (the buttons already cover it). Optional `/resume-preview.webp` image if the owner adds one.
+- **`links` is null** (placeholder or malformed link): render only "Resume coming soon." at body scale. No buttons, no iframe. (The dev validator warns about this, see §3.10.)
+- Action row `flex flex-wrap gap-3`. Both links use `target="_blank" rel="noopener noreferrer"`:
+  - **Download** → `links.download`, primary: `h-10 px-4 rounded-lg bg-fg text-bg text-sm font-medium inline-flex items-center gap-2 transition-opacity hover:opacity-90`
+  - **Open in Google Drive** → `links.view`, secondary: same size, `border border-border hover:bg-subtle transition-colors`
+- Preview iframe on **all** screen sizes, with a centred "Loading preview…" behind it so the box is never blank while it loads:
+
+  ```tsx
+  <div className="relative mt-8 rounded-lg bg-subtle">
+    <p aria-hidden className="absolute inset-0 grid place-items-center text-sm text-muted">Loading preview…</p>
+    <iframe
+      src={links.preview}
+      title="Resume preview"
+      loading="lazy"
+      allow="autoplay"
+      className="relative block aspect-[1/1.414] max-h-[85dvh] w-full rounded-lg border border-border"
+    />
+  </div>
+  ```
+
+  The wrapper carries `mt-8` and `bg-subtle` instead of the iframe. An iframe paints its own background over anything behind it, so `bg-subtle` on the iframe would hide the loading text. The Drive viewer covers the text once it loads. `block` removes the inline baseline gap under the iframe.
 
 ### 6.6 NotFound
 
@@ -1088,7 +1134,7 @@ At **320, 375, 414, 768, 1024, 1440, 1920px**, light and dark:
 - [ ] Dates stack under titles on mobile, right-aligned on `sm+`.
 - [ ] Chips, socials, buttons wrap cleanly.
 - [ ] Project grid: 1 column < 640px, 2 columns ≥ 640px; cards in a row align.
-- [ ] Resume: iframe ≥ 768px, buttons only below.
+- [ ] Resume: Drive preview iframe at every width without overflow (capped at `85dvh`); buttons wrap.
 - [ ] Tap targets ≥ 36px; no hover-only information.
 - [ ] iOS Safari: no white flash, sticky header OK, `dvh` correct with toolbar.
 - [ ] Keyboard: skip link, full Tab order, focus always visible.
@@ -1121,7 +1167,7 @@ Add a job          → src/data/experience.ts   append { company, role, start: "
 Add a project      → src/data/projects.ts     append { title, description, tech, links, featured }
 Add/remove social  → src/data/socials.ts      add/remove { platform: "leetcode", url }
 Add a skill        → src/data/skills.ts       add "Name" to a group
-Update resume      → replace public/resume.pdf, bump site.resume.updated
+Update resume      → upload a new version in Google Drive via Manage versions; the link stays the same (bump site.resume.updated)
 Bio / email / name → src/data/site.ts
 New icon support   → src/lib/icons.ts         one line in SOCIAL_ICONS or TECH_ICONS
 ```

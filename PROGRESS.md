@@ -10,25 +10,23 @@ Each step lists the `IMPLEMENTATION.md` sections to read. Read only those.
 
 _Overwrite this section at the end of every step._
 
-- **Last completed step:** Step 3 — Theme context + helpers
-- **What was done:** Added `src/lib/theme.ts`, `src/context/ThemeContext.tsx` and `src/lib/cn.ts`, copied from §2.6 and §2.7. `main.tsx` wraps the placeholder in `<ThemeProvider>` and renders a temporary `<ThemeTest />` button that shows the current theme and toggles it.
-- **Files created/changed:** new `src/lib/theme.ts`, `src/lib/cn.ts`, `src/context/ThemeContext.tsx`, `src/components/ui/ThemeTest.tsx` (**temporary**). Changed `src/main.tsx` and `eslint.config.js`. Deleted `src/lib/.gitkeep` and `src/context/.gitkeep`.
-- **Verified:** `pnpm build` and `pnpm lint` are clean. A headless-Chrome test passed all 12 checks against both the production build (`vite preview`) and dev (StrictMode), with no console warnings or errors in either:
-  - With no stored choice and the OS in dark mode, the page loads dark. The `.dark` class is already on `<html>` when `<body>` is created, so there's no flash.
-  - With no stored choice, switching the OS from dark to light updates the page live.
-  - Clicking the button switches to dark, stores `"dark"` and sets `color-scheme`. `.no-transitions` is on during the switch and gone a frame later.
-  - After a reload with the OS in light mode, the stored dark choice still wins and is applied before `<body>`.
-  - Once a choice is stored, OS theme changes are ignored.
-  - Toggling back to light persists across a reload.
-  - The Hanken Grotesk font loads from the bundle, and the body background is the token value (`rgb(10,10,10)` in dark).
-  - The test script is a throwaway in the session scratchpad. Nothing was added to the repo or to dependencies.
+- **Last completed step:** Step 4 — Types + data files
+- **What was done:** Added `src/types/content.ts` (§3.1) and the six data files `site`, `navigation`, `socials`, `experience`, `projects` and `skills` (§3.2 to §3.7). Each data file has a schema comment header, placeholder content and `satisfies <Type>`. Nothing renders them yet; the page is still the Step 3 placeholder.
+- **Files created/changed:** new `src/types/content.ts`, `src/data/{site,navigation,socials,experience,projects,skills}.ts` and `src/lib/icons.ts` (partial, see below). Deleted `src/types/.gitkeep` and `src/data/.gitkeep`.
+- **Verified:**
+  - `pnpm build` and `pnpm lint` are clean.
+  - **Wrong case is caught:** changing `mode: "On-site"` to `mode: "remote"` in `experience.ts` gives `TS2820: Type '"remote"' is not assignable to type 'WorkMode | undefined'. Did you mean '"Remote"'?` on the data line. The edit was reverted and `tsc` is clean again.
+  - **Autocomplete works:** asking the TypeScript language service (what VS Code uses) for completions at `platform: "` in an in-memory edit of `socials.ts` returns all 19 known platforms (x, twitter, linkedin, github, …, email, website).
+  - **Unknown platforms are accepted:** `{ platform: "foo", url }` still type-checks, as §3.4 requires. That edit was reverted too.
 - **Decisions / deviations from spec:**
-  - **`eslint.config.js`: `react-refresh/only-export-components` now has `allowExportNames: ['useTheme']`.** Lint failed because `ThemeContext.tsx` exports the `useTheme` hook alongside the provider, which is how the spec lays it out. The plugin's own option allows that one name. The alternative was splitting the file in three or adding disable comments. Side effect: editing `ThemeContext.tsx` does a full page reload in dev instead of a hot update.
-  - The test button lives in its own file (`src/components/ui/ThemeTest.tsx`) because the same rule doesn't allow a component inside `main.tsx`. **Step 6: delete `ThemeTest.tsx` and its import and JSX in `main.tsx`.**
+  - **`src/lib/icons.ts` was created early, in part.** `content.ts` imports `SocialPlatform`, which is derived from `SOCIAL_ICONS`, and autocomplete is a Step 4 check. So `icons.ts` currently holds only `SOCIAL_ICONS` (exactly as in §3.9) plus `SocialPlatform`. Those 18 fa6/si imports build fine on react-icons 5.7.0. **Step 5 adds** `toKey`, `TECH_ICONS` (with the remaining `Si*` imports and `FaAws`), `FALLBACK_SOCIAL`/`FaLink`, `getSocial`, `getTechIcon` and `isKnownPlatform`, and removes the "Step 4" comment at the top of the file.
+  - Comment headers go slightly beyond the spec: `site.ts` has a required/optional list and a reminder to sync `index.html`; `experience.ts` lists the allowed `mode`/`type` values; `projects.ts` has an `image` path example. The data shapes are unchanged, so §3 of IMPLEMENTATION.md doesn't need updating.
+  - From Step 3: `eslint.config.js` allows the `useTheme` export via `allowExportNames`. `src/components/ui/ThemeTest.tsx` is **temporary**; Step 6 deletes it and its import and JSX in `main.tsx`.
   - From Step 2: `@source not "../*.md";` in `index.css` stops Tailwind generating classes from the docs. The avatar preload in `index.html` is commented out until `public/avatar.webp` exists.
   - From Step 1: no `baseUrl` in `tsconfig.app.json` (TS 6 rejects it with TS5101; `paths` alone works). `"strict": true` is set explicitly. `public/favicon.svg` is still the Vite logo until Step 14.
 - **Owner needs to provide:** real content in `src/data/*`, `public/avatar.webp`, `public/resume.pdf`, `public/og.png` (1200×630; `index.html` already points to it), project images. These can come later; placeholders are fine. The `<title>`, description and OG text in `index.html` are static placeholders ("Your Name"), so update them by hand to match `site.ts`.
 - **Known issues / TODO:**
+  - **The placeholder data points at files that don't exist yet:** `site.avatar` (`/avatar.webp`), `site.resume.file` (`/resume.pdf`) and project image `/projects/project-one.webp`. Once Steps 11 to 13 render them they'll 404, showing broken images and console errors. Either add the files, or set `avatar: null` and drop `image` until real assets exist.
   - `cn()` isn't used anywhere yet; the first callers arrive in Step 6 (`Container`).
   - Git on Windows warns about LF→CRLF. If you want LF everywhere (the Prettier default), add `.gitattributes` with `* text=auto eol=lf`. I didn't add it; ask if you want it.
   - Delete the `.gitkeep` files as real files land in each folder.
@@ -56,7 +54,7 @@ _Overwrite this section at the end of every step._
 
 ### Data layer
 
-- [ ] **Step 4: Types + data files**
+- [x] **Step 4: Types + data files**
   Read: §3.1 to §3.7
   `src/types/content.ts` and all `src/data/*.ts` with schema comment headers and placeholder content.
   **Done when:** `pnpm build` passes; `mode: "remote"` (wrong case) causes a TS error (test it, then revert); typing `platform: "` in socials autocompletes.
@@ -103,7 +101,8 @@ _Overwrite this section at the end of every step._
 
 - [ ] **Step 13: Resume page + 404 page**
   Read: §6.5, §6.6
-  **Done when:** Download and Open work; iframe shows only on `md+`; mobile shows buttons + note; 404 has a working "Go home" link.
+  Resume comes from Google Drive (`site.resume.driveUrl` → `src/lib/resume.ts`).
+  **Done when:** with a real Drive link, "Download" and "Open in Google Drive" both open in a new tab and work; the Drive preview iframe shows at every width (capped at `85dvh`, no overflow at 320px) with "Loading preview…" visible behind it while it loads; with the placeholder or a malformed link, only "Resume coming soon." shows (no buttons, no iframe); 404 has a working "Go home" link.
 
 ### Quality
 
