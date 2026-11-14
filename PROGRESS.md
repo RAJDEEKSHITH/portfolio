@@ -32,17 +32,24 @@ _Overwrite this section at the end of every step._
     - All of that happened as a **hot update, with no page reload**, and the validator re-ran each time; the unknown-platform warning appeared and then cleared. The file was restored, and `git status` confirms it matches the committed version.
   - **Screenshots:** 320 and 1440px in light and dark all look right. On desktop the icon row lines up with the theme toggle above.
   - **Console:** production logged nothing. Dev showed only the expected `[content]` warning. No validator or HMR code is in `dist`.
-- **Decisions / deviations from spec:**
-  - **The `sm` icon links are `size-9` (36px), not `size-8`.** §4.8's `sm` uses `size-8` (32px), but CLAUDE.md requires icon links to be at least `size-9` and §9 requires tap targets of at least 36px. Now `sm` and `md` differ only in icon size (`size-4` vs `size-4.5`, the canonical form of `size-[18px]`).
-  - **SocialLinks reads `socials` through its declared type** (`const links: readonly Social[] = socials`). With §4.8's code verbatim, TypeScript fails with `TS2339: Property 'label' does not exist` (checked), because no placeholder entry sets `label` and `satisfies` keeps the literal shapes.
-  - `{...(!isMail && {...})}` became an `external` object (`{}` for mailto, otherwise `target`/`rel`) spread onto the `<a>`. The behaviour is the same and it reads more clearly.
-  - **`validate.ts` accepts its own hot updates** (`import.meta.hot.accept((next) => next?.validateContent())`). It's not in the spec. Without it, editing **any** `src/data/*` file did a full page reload in dev: `validate.ts` imports every data file but is loaded from `main.tsx`, which can't hot-reload. Now data edits are hot updates and the warning refreshes live. It's dev-only, and Vite removes `import.meta.hot` from builds.
+- **Owner decisions, recorded after Step 8. These are final; don't reopen them:**
+  1. **All three Step 8 deviations are accepted, and the docs now match the code:**
+     - 36px footer icon links: §4.8 updated, with both sizes on `size-9`;
+     - the TS2339 fix: §4.8's code now uses `links: readonly Social[]`;
+     - the dev hot-update change in `validate.ts`: documented in §3.10.
+  2. **Bundle budget raised to ≤ 130 KB gzip for the initial JS** (option a), in §8 and the Step 15 "Done when". **Keep the full `SOCIAL_ICONS` and `TECH_ICONS` registries**, so the owner can add socials and skills freely. Step 15 must not trim them. The current size of 114.2 KB is within budget.
+  3. **The 320px nav keeps the horizontal-scroll fallback.** The owner left this one to me. Tighter gaps would fit with only about 1px to spare and break on any label or font change, while the fallback is what §4.5 prescribes, scales to any number of nav items, and has been tested with the keyboard. §4.5 now documents the real numbers (about 307px needed against 280px available at 320px) and the fallback's exact classes and `onFocus`, replacing the old "4 labels + toggle fit" claim.
+- **Decisions / deviations from spec** (all now reflected in IMPLEMENTATION.md):
+  - **The `sm` icon links are `size-9` (36px), not `size-8`.** This meets CLAUDE.md's ≥ `size-9` rule and §9's ≥ 36px tap targets. `sm` and `md` differ only in icon size (`size-4` vs `size-4.5`).
+  - **SocialLinks reads `socials` through its declared type** (`const links: readonly Social[] = socials`). The original §4.8 code failed with `TS2339: Property 'label' does not exist` (checked).
+  - The `{...(!isMail && {...})}` spread became an `external` object, with the same behaviour.
+  - **`validate.ts` accepts its own hot updates** (`import.meta.hot.accept((next) => next?.validateContent())`), so `src/data/*` edits are hot updates instead of full reloads, and the checks re-run. It's dev-only, and Vite strips it from builds.
   - From Step 7:
     - **The nav doesn't fit at 320px, so the spec's own fallback is in use.** §4.5 says 4 labels plus the toggle fit at 320px, but measured they need about 307px of the 280px available (links 207px, gaps 3×16px, header gap 16px, toggle 36px). At 375px they fit with 44px to spare. As §4.5 prescribes for overflow, the `ul` is `overflow-x-auto` with a hidden scrollbar (`[scrollbar-width:none]` plus `[&::-webkit-scrollbar]:hidden`), never a hamburger. **At 320px "Resume" shows cut off as "Resu" until you swipe or Tab to it.** Three small additions make that fallback work:
       - `p-1 -mx-1 scroll-px-1` on the `ul`, so a scroll container doesn't clip the 4px focus ring;
       - `shrink-0` on the toggle, which was being squeezed to 33px;
       - an `onFocus` on each link calling `scrollIntoView({ block: "nearest", inline: "nearest" })`. Chrome won't scroll a partly visible focused element into view on its own; this was measured, and without it "Resume" stayed clipped.
-      - **Owner's call, still open:** the alternative is tighter spacing at the base size only (`gap-2` between links and `gap-3` before the toggle). It fits at 320px, but with about 1px to spare, so any label or font change would break it.
+      - **Decided:** keep this fallback (see Owner decisions #3). Tighter gaps were rejected as too fragile.
     - **The hairline border once scrolled (optional in §4.5) is not built.** Ask if you want it.
     - **The skip link has the standard focus ring** (`focus-visible:outline-2 outline-offset-2 outline-fg`). §4.3's classes left it with the browser default ring.
     - **The crossfade works despite `.no-transitions`.** `applyTheme()` forces its style flush before React swaps the icon classes, and `.no-transitions` comes off in the next animation frame, before that frame's style recalculation. Don't add a forced reflow (for example reading `offsetHeight`) after `setTheme`, or the crossfade will stop.
@@ -60,18 +67,10 @@ _Overwrite this section at the end of every step._
 - **Known issues / TODO:**
   - **The placeholder data points at files that don't exist yet:** `site.avatar` (`/avatar.webp`) and project image `/projects/project-one.webp`. Once Steps 11 and 12 render them they'll 404, showing broken images and console errors. Either add the files, or set `avatar: null` and drop `image` until real assets exist.
   - **Expected dev warning:** until a real Drive link is in `site.resume.driveUrl`, every dev page load shows one `[content]` warning about it, and the Step 13 Resume page will show "Resume coming soon." That's intended, but it means "no console warnings in dev" (Definition of done) only holds once the link is pasted. Treat that single warning as expected when checking later steps.
-  - **⚠ Bundle budget exceeded: the initial JS is now 114.2 KB gzip (350 KB raw), against Step 15's ~110 KB target.** It was 103.1 after Step 7, so Step 8 added 11.1 KB.
-    - **Cause:** `getSocial()` looks icons up by string at runtime, so the bundler must keep **all 19** `SOCIAL_ICONS`, not just the 7 in use. Several brand logos are large: CodeChef 7.4 KB and Kaggle 3.6 KB of SVG path data, GeeksforGeeks 1.6 KB.
-    - **Tree-shaking does work:** none of the `TECH_ICONS` are in the bundle yet (checked with SVG-path probes).
-    - **It will get worse.** The Home page (eager, Step 12) uses `TechChip`, which makes all of `TECH_ICONS` reachable: about 35 entries, including PostgreSQL 5.3 KB and React 3.0 KB of paths.
-    - **Options for Step 15 (owner's call):**
-      - (a) Raise the budget. The CSS-only motion and the lazy pages already keep the site fast.
-      - (b) Trim the registries to the icons actually used. That's simple, but adding a platform then means one line in `icons.ts`, which is already the documented workflow.
-      - (c) Load the icon registries with a dynamic `import()`. Nothing shifts if the icon boxes are fixed-size, but it adds complexity.
-      - (d) Load the `/projects`, `/experience` and `/resume` pages lazily, and the footer socials too. That's not recommended, because the footer is on every page.
-  - At 320px, after you navigate to `/resume`, the active "Resume" link stays partly scrolled out of view, since nothing scrolls the nav on route change, only on focus. That's cosmetic, and Step 16 (responsive QA) can decide whether it matters.
+  - **Bundle: 114.2 KB gzip initial JS (350 KB raw), within the new ≤ 130 KB budget.** It was 103.1 after Step 7; the full social registry added 11.1 KB, because string lookups ship all 19 icons, with CodeChef at 7.4 KB and Kaggle at 3.6 KB of paths. **Watch Steps 9 and 12:** `TechChip` on the eager Home page will make all of `TECH_ICONS` reachable (about 35 entries, for example PostgreSQL 5.3 KB and React 3.0 KB of paths), which could cost another 10 KB or more of gzip. Record the size after each of those steps. If it gets close to 130, raise it with the owner before Step 15 instead of trimming the registries.
+  - At 320px, after you navigate to `/resume`, the active "Resume" link stays partly scrolled out of view, since nothing scrolls the nav on route change, only on focus. **Fix scheduled in Step 16** (scroll the active link into view on route change).
   - **The `[content]` warning prints once per full page load, and again after each hot data edit** (the validator re-runs on new content). Client-side navigation doesn't re-run it.
-  - At 1440px the footer's top border stops about 15px short of the right edge. That's the space `scrollbar-gutter: stable` (§2.4) reserves for the scrollbar, and it's where the scrollbar is drawn in a normal desktop browser. It's expected.
+  - At 1440px the footer's full-width top border stops about 15px short of the right edge, at the space `scrollbar-gutter: stable` (§2.4) reserves for the scrollbar. **Fix scheduled in Step 16:** the border moves onto an inner element inside the footer's Container, so it matches the text width and never reaches the gutter.
   - Git on Windows warns about LF→CRLF. If you want LF everywhere (the Prettier default), add `.gitattributes` with `* text=auto eol=lf`. I didn't add it; ask if you want it.
   - Delete the `.gitkeep` files as real files land in each folder.
 
@@ -157,12 +156,15 @@ _Overwrite this section at the end of every step._
 
 - [ ] **Step 15: Performance pass**
   Read: §8
-  **Done when:** `pnpm build` output shows initial JS ≤ ~110 KB gzip; no layout shift on load, theme switch or navigation; images have dimensions; record the bundle sizes in Handoff notes.
+  **Done when:** `pnpm build` output shows initial JS ≤ 130 KB gzip (raised from ~110 by the owner in Step 8; keep the full icon registries); no layout shift on load, theme switch or navigation; images have dimensions; record the bundle sizes in Handoff notes.
 
 - [ ] **Step 16: Responsive + accessibility QA**
   Read: §9
   Go through the whole checklist at every listed width in both themes; fix every issue found.
-  **Done when:** every §9 box is satisfied; list anything still imperfect in Handoff notes.
+  Also do these (owner requests, added after Step 8):
+  - **Nav: scroll the active link into view on route change.** In `Header`, on every `pathname` change, call `scrollIntoView({ inline: "nearest", block: "nearest" })` on the active `NavLink` (`aria-current="page"`). Respect reduced motion: use the default instant behaviour, or `behavior: "smooth"` only when `prefers-reduced-motion` is not `reduce`. It must never scroll the page vertically. The header is sticky at the top, so `block: "nearest"` is a no-op there; verify it. This fixes "Resume" staying clipped at 320px after navigating to `/resume`.
+  - **Footer: move `border-t border-border` off `<footer>` and onto an inner element inside the `<Container>`** (decided by the owner), so the hairline matches the text width exactly at every screen size and never reaches the scrollbar gutter. Don't put it on the Container itself, because that would include its `px-5 sm:px-6` padding. For example, wrap the row in a `<div className="flex … border-t border-border py-8">` inside `<Container>`, keeping the existing flex classes. Check 320, 768 and 1440px in both themes: the line's ends must align with the © text and the last social icon's box.
+  **Done when:** every §9 box is satisfied; the two owner requests above are done and checked; list anything still imperfect in Handoff notes.
 
 - [ ] **Step 17: Deploy prep + README**
   Read: §10, §11

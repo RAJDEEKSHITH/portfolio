@@ -665,6 +665,8 @@ export const isKnownPlatform = (platform: string): boolean => toKey(platform) in
 
 Runs once from `main.tsx` inside `if (import.meta.env.DEV)`. Logs a **single grouped `console.warn`** listing problems so typos are caught instantly; never throws, never runs in production.
 
+It also accepts its own hot updates in dev: `if (import.meta.hot) import.meta.hot.accept((next) => next?.validateContent());`. `validate.ts` imports every data file but is loaded from `main.tsx`, which can't hot-reload, so without this any `src/data/*` edit would force a full page reload. With it, data edits are hot updates and the checks re-run on the new content. Vite strips `import.meta.hot` from production builds.
+
 Checks:
 - every `experience.start` / non-null `end` and `site.resume.updated` matches `YEAR_MONTH_RE`
 - `end` is not before `start`
@@ -796,7 +798,10 @@ export function Container({ as: Tag = "div", className, children }: ContainerPro
 - Left: `<nav aria-label="Primary">` → `<ul className="flex items-center gap-4 sm:gap-6">` of `NavLink`s from `navigation`:
   - base `text-sm sm:text-[15px] text-muted transition-colors hover:text-fg`
   - active `text-fg font-medium` (className callback; pass `end` for `/`)
-  - **must fit on one line at 320px** — 4 short labels + toggle do. If more items are added later and it overflows, make the `ul` `overflow-x-auto` with hidden scrollbar; never a hamburger.
+  - **must stay on one line at every width; never a hamburger.** At 320px the 4 labels plus the toggle need about 307px of the 280px available. They fit from 375px up. So the `ul` is always `overflow-x-auto` with a hidden scrollbar, and it only actually scrolls when the links don't fit:
+    - `ul`: `-mx-1 p-1 scroll-px-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`, so a scroll container doesn't clip the 4px focus ring;
+    - each link: `onFocus={(e) => e.currentTarget.scrollIntoView({ block: "nearest", inline: "nearest" })}`. Browsers don't scroll a *partly* visible focused element into view;
+    - `<nav>` gets `min-w-0`, links `whitespace-nowrap`, and the toggle `shrink-0`.
 - Right: `<ThemeToggle />`.
 - Optional hairline `border-b border-border/60` only once scrolled, via an IntersectionObserver on a 1px sentinel at the top of `<main>` (no scroll listeners).
 
@@ -826,30 +831,33 @@ Nothing else — no nav columns, no quotes, no "built with".
 ### 4.8 `SocialLinks`
 
 ```tsx
+// Read through the declared type so optional fields (label) exist even if no entry sets them.
+// (Mapping `socials` directly fails with TS2339 when no entry has a `label`, because `satisfies` keeps literal shapes.)
+const links: readonly Social[] = socials;
+
 type SocialLinksProps = { size?: "sm" | "md"; className?: string };
 
 export function SocialLinks({ size = "md", className }: SocialLinksProps) {
   return (
     <ul className={cn("flex flex-wrap items-center gap-1", className)}>
-      {socials.map(({ platform, url, label }) => {
+      {links.map(({ platform, url, label }) => {
         const meta = getSocial(platform);
         const Icon = meta.icon;
         const name = label ?? meta.label;
-        const isMail = url.startsWith("mailto:");
+        const external = url.startsWith("mailto:") ? {} : { target: "_blank", rel: "noopener noreferrer" };
         return (
           <li key={url}>
             <a
               href={url}
               aria-label={name}
               title={name}
-              {...(!isMail && { target: "_blank", rel: "noopener noreferrer" })}
+              {...external}
               className={cn(
-                "grid place-items-center rounded-full text-muted transition-colors hover:bg-subtle hover:text-fg",
+                "grid size-9 place-items-center rounded-full text-muted transition-colors hover:bg-subtle hover:text-fg",
                 "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg",
-                size === "sm" ? "size-8" : "size-9",
               )}
             >
-              <Icon aria-hidden className={size === "sm" ? "size-4" : "size-[18px]"} />
+              <Icon aria-hidden className={size === "sm" ? "size-4" : "size-4.5"} />
             </a>
           </li>
         );
@@ -859,6 +867,7 @@ export function SocialLinks({ size = "md", className }: SocialLinksProps) {
 }
 ```
 
+Both sizes use a **36px** (`size-9`) hit area, the minimum tap target (CLAUDE.md, §9). `size` changes only the glyph: `sm` = 16px (`size-4`), `md` = 18px (`size-4.5`).
 `flex-wrap` guarantees no overflow even with many socials at 320px.
 
 **Phase 3 acceptance**
@@ -1114,10 +1123,10 @@ Polish: consistent focus rings; inverted `::selection`; SVG favicon monogram tha
 
 ## 8. Phase 7 — Performance
 
-Targets (prod, mobile Lighthouse): **Performance ≥ 95, CLS < 0.02, LCP < 1.8s, initial JS ≤ ~110 KB gzip.**
+Targets (prod, mobile Lighthouse): **Performance ≥ 95, CLS < 0.02, LCP < 1.8s, initial JS ≤ 130 KB gzip.**
 
 - Home eager; other pages lazy route chunks, warmed on idle.
-- `react-icons`: named imports only; confirm icon code is small in `pnpm build` output.
+- `react-icons`: named imports only. The **full `SOCIAL_ICONS` and `TECH_ICONS` registries are kept on purpose**, so the owner can add socials or skills by editing data only. `getSocial()`/`getTechIcon()` look icons up by string, so every registered icon ships, used or not. That's why the budget is 130 KB rather than ~110 KB (owner decision, Step 8: 114.2 KB gzip with the full social registry). Don't trim the registries to save bytes.
 - Images: WebP/AVIF at ≤ 2× display size. Avatar ≤ 30 KB, project images ≤ 120 KB. Always `width`/`height`.
 - Avatar preloaded in `index.html` (LCP element).
 - No layout shift on theme toggle, route change, or font load.
