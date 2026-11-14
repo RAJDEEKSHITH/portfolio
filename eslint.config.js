@@ -18,5 +18,12 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      // Context files export their hook next to the provider (e.g. ThemeContext.tsx → useTheme)
+      'react-refresh/only-export-components': [
+        'error',
+        { allowConstantExport: true, allowExportNames: ['useTheme'] },
+      ],
+    },
   },
 ])

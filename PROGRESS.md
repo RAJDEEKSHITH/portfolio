@@ -10,17 +10,26 @@ Each step lists the `IMPLEMENTATION.md` sections to read. Read only those.
 
 _Overwrite this section at the end of every step._
 
-- **Last completed step:** Step 2 — Design tokens + no-flash theme
-- **What was done:** Wrote `src/index.css` from §2.4: tokens, `@custom-variant dark`, `@theme inline` colour utilities, fonts, the `fade-up`/`fade-in` keyframes, the base layer, `.no-transitions` and the reduced-motion guard. Wrote `index.html` from §2.5: the no-flash theme script first in `<head>`, `theme-color`, favicon, title and description, OG and Twitter tags. Imported both fonts in `main.tsx`. The placeholder now uses `bg-bg text-fg`, plus `text-muted`, `font-mono` and `text-accent` so the tokens are easy to check by eye.
-- **Files created/changed:** `src/index.css`, `index.html`, `src/main.tsx`.
-- **Verified:** `pnpm build` and `pnpm lint` are clean. The compiled CSS has `.dark{--bg:#0a0a0a…}`, and `.bg-bg`, `.bg-bg/80`, `.text-fg`, `.text-muted` and `.text-accent` all map to the CSS variables. The 8 `.woff2` subsets are bundled in `dist/assets`, with no Google Fonts URLs. In the build, the theme script is the first script in `<head>`, ahead of the CSS and JS. The dev server logs no errors or warnings. **Not checked in a real browser:** toggling `.dark` in devtools, and a hard reload with the OS in dark mode. Both should work because the script runs synchronously before first paint, but have a look yourself.
+- **Last completed step:** Step 3 — Theme context + helpers
+- **What was done:** Added `src/lib/theme.ts`, `src/context/ThemeContext.tsx` and `src/lib/cn.ts`, copied from §2.6 and §2.7. `main.tsx` wraps the placeholder in `<ThemeProvider>` and renders a temporary `<ThemeTest />` button that shows the current theme and toggles it.
+- **Files created/changed:** new `src/lib/theme.ts`, `src/lib/cn.ts`, `src/context/ThemeContext.tsx`, `src/components/ui/ThemeTest.tsx` (**temporary**). Changed `src/main.tsx` and `eslint.config.js`. Deleted `src/lib/.gitkeep` and `src/context/.gitkeep`.
+- **Verified:** `pnpm build` and `pnpm lint` are clean. A headless-Chrome test passed all 12 checks against both the production build (`vite preview`) and dev (StrictMode), with no console warnings or errors in either:
+  - With no stored choice and the OS in dark mode, the page loads dark. The `.dark` class is already on `<html>` when `<body>` is created, so there's no flash.
+  - With no stored choice, switching the OS from dark to light updates the page live.
+  - Clicking the button switches to dark, stores `"dark"` and sets `color-scheme`. `.no-transitions` is on during the switch and gone a frame later.
+  - After a reload with the OS in light mode, the stored dark choice still wins and is applied before `<body>`.
+  - Once a choice is stored, OS theme changes are ignored.
+  - Toggling back to light persists across a reload.
+  - The Hanken Grotesk font loads from the bundle, and the body background is the token value (`rgb(10,10,10)` in dark).
+  - The test script is a throwaway in the session scratchpad. Nothing was added to the repo or to dependencies.
 - **Decisions / deviations from spec:**
-  - **Added `@source not "../*.md";` to `index.css`.** Tailwind v4 auto-scans every file git doesn't ignore, so it was generating classes named in `CLAUDE.md` and `IMPLEMENTATION.md` (`bg-white`, `text-zinc-500`, …). Excluding them cut the CSS from 32.5 KB to 15.8 KB.
-  - **Avatar preload is commented out in `index.html`.** `public/avatar.webp` doesn't exist yet, so a live preload would 404 in the console. Uncomment it when the avatar is added, or by Step 15 at the latest.
-  - Carried over from Step 1: no `baseUrl` in `tsconfig.app.json` (TS 6 rejects it with TS5101; `paths` alone works). `"strict": true` is set explicitly. `public/favicon.svg` is still the Vite logo until Step 14.
+  - **`eslint.config.js`: `react-refresh/only-export-components` now has `allowExportNames: ['useTheme']`.** Lint failed because `ThemeContext.tsx` exports the `useTheme` hook alongside the provider, which is how the spec lays it out. The plugin's own option allows that one name. The alternative was splitting the file in three or adding disable comments. Side effect: editing `ThemeContext.tsx` does a full page reload in dev instead of a hot update.
+  - The test button lives in its own file (`src/components/ui/ThemeTest.tsx`) because the same rule doesn't allow a component inside `main.tsx`. **Step 6: delete `ThemeTest.tsx` and its import and JSX in `main.tsx`.**
+  - From Step 2: `@source not "../*.md";` in `index.css` stops Tailwind generating classes from the docs. The avatar preload in `index.html` is commented out until `public/avatar.webp` exists.
+  - From Step 1: no `baseUrl` in `tsconfig.app.json` (TS 6 rejects it with TS5101; `paths` alone works). `"strict": true` is set explicitly. `public/favicon.svg` is still the Vite logo until Step 14.
 - **Owner needs to provide:** real content in `src/data/*`, `public/avatar.webp`, `public/resume.pdf`, `public/og.png` (1200×630; `index.html` already points to it), project images. These can come later; placeholders are fine. The `<title>`, description and OG text in `index.html` are static placeholders ("Your Name"), so update them by hand to match `site.ts`.
 - **Known issues / TODO:**
-  - The `dark:` variant isn't used anywhere yet. It's defined and gets exercised in later steps.
+  - `cn()` isn't used anywhere yet; the first callers arrive in Step 6 (`Container`).
   - Git on Windows warns about LF→CRLF. If you want LF everywhere (the Prettier default), add `.gitattributes` with `* text=auto eol=lf`. I didn't add it; ask if you want it.
   - Delete the `.gitkeep` files as real files land in each folder.
 
@@ -40,7 +49,7 @@ _Overwrite this section at the end of every step._
   Write `src/index.css` (tokens, `@theme`, keyframes, base layer, `.no-transitions`, reduced motion). Write `index.html` (theme script, meta, OG, favicon link). Import the fonts in `main.tsx`.
   **Done when:** placeholder uses `bg-bg text-fg`; toggling `.dark` on `<html>` in devtools switches colors; a hard reload with the OS in dark mode shows no white flash; fonts load from the bundle.
 
-- [ ] **Step 3: Theme context + helpers**
+- [x] **Step 3: Theme context + helpers**
   Read: §2.6, §2.7
   `src/lib/theme.ts`, `src/context/ThemeContext.tsx`, `src/lib/cn.ts`. Wrap the app in `ThemeProvider`. Add a temporary test button that toggles the theme.
   **Done when:** the button toggles and the choice persists after reload; with no stored choice, the site follows OS theme changes live; no transition flicker while switching.
