@@ -10,43 +10,44 @@ Each step lists the `IMPLEMENTATION.md` sections to read. Read only those.
 
 _Overwrite this section at the end of every step._
 
-- **Last completed step:** Step 5 — Lib helpers: dates, icons, validator
+- **Last completed step:** Step 6 — Router + RootLayout + page stubs
 - **What was done:**
-  - Added `src/lib/dates.ts`, copied from §3.8.
-  - **`src/lib/icons.ts` is now complete**, per §3.9. Step 4 had only the social registry; this step added `toKey`, `TECH_ICONS`, `FALLBACK_SOCIAL`/`FaLink`, `getSocial`, `getTechIcon` and `isKnownPlatform`, and removed the "Step 4" comment.
-  - Added `src/lib/validate.ts`, which runs every §3.10 check, including the Drive-ID check added with the resume change.
-  - `main.tsx` calls `validateContent()` through a dynamic import inside `if (import.meta.env.DEV)`, as in §4.2.
-- **Files created/changed:** new `src/lib/dates.ts` and `src/lib/validate.ts`; changed `src/lib/icons.ts` and `src/main.tsx`. A temporary `src/components/ui/ExperienceTest.tsx` was created for verification and has been **deleted**, along with its import and JSX in `main.tsx`.
+  - Added `src/router.tsx` (§4.1): a data router with Home and NotFound loaded eagerly, Experience, Projects and Resume as lazy chunks, `/work` redirecting to `/experience`, and `*` showing the 404 inside the layout.
+  - Replaced `src/main.tsx` with its final version (§4.2): `ThemeProvider` wraps `RouterProvider`, lazy chunks are warmed when the browser is idle, and the dev-only validator call is kept.
+  - Added `RootLayout` (§4.3: skip link, `<main id="main">`, a fade-in keyed on the path, `ScrollRestoration`) and `Container` (§4.4).
+  - Added five page stubs (`Home`, `Experience`, `Projects`, `Resume`, `NotFound`). Each renders a `<title>` and a page-title-scale `<h1>` inside `<Container>`.
+  - Deleted the Step 3 test button.
+- **Files created/changed:** new `src/router.tsx`, `src/components/layout/{RootLayout,Container}.tsx` and `src/pages/{Home,Experience,Projects,Resume,NotFound}.tsx`. Replaced `src/main.tsx`. Deleted `src/components/ui/ThemeTest.tsx`, `src/pages/.gitkeep` and `src/components/layout/.gitkeep`. No temporary code is left; a `grep` for `TEMPORARY`/`ThemeTest`/test ids comes back empty.
 - **Verified:**
-  - `pnpm build` and `pnpm lint` are clean.
-  - **Icon exports:** all 46 react-icons names in the spec exist in react-icons 5.7.0. That covers 13 `fa6`, 30 `si`, and `LuSun`/`LuMoon`/`LuArrowUpRight` for Steps 7 and 9, so nothing needed swapping. `SiGsap` also exists if the newer GSAP logo is ever wanted; the spec's `SiGreensock` is kept.
-  - **Helper unit tests (Node, 19 checks, all pass):**
-    - `formatMonth` and `formatRange`, including "Present".
-    - Inclusive durations: Jan–Mar is "3 mos", one month is "1 mo", 12 months is "1 yr", 13 is "1 yr 1 mo", and end before start gives "".
-    - `YEAR_MONTH_RE` rejects `2026-1`, `2026-13`, `2026-00`, `26-01` and `2026/01`.
-    - `sortExperience` puts current jobs first, then sorts by newest start, without mutating its input.
-    - `toKey`: "Next.js"→"nextjs", "C++"→"c++", "C#"→"c#".
-    - Tech icons: "Zustand"→none, "AWS" and "GSAP"→found. Socials: "foo" falls back to "Link", "Dev.to" maps to DEV.
-  - **Temporary render, checked in headless Chrome (dev):** it showed `Company A | Jan 2026 – Present | 11 mos | Working`, then `Company B | Aug 2025 – Dec 2025 | 5 mos`.
-  - **Unknown platform:** adding `{ platform: "foo" }` produced exactly one `console.warn`, listing every problem found (the unknown platform and the placeholder Drive link).
-  - **All validator rules:** with deliberately broken data, one warning listed all 8 problems: end before start, a bad start, a bad `resume.updated`, a duplicate social URL, a duplicate project title, a bad project image path, a bad avatar path, and `projectLimit: 0`. A valid Drive link and `"GitHub"` in mixed case raised nothing. All data was restored, and `git status` shows it matches the committed version.
-  - **Production:** a build with the bad data in place logged **0** console messages in headless Chrome, and no validator code is in `dist`, so the dev branch is removed from the build.
+  - `pnpm build` and `pnpm lint` are clean. The build output has the lazy chunks `Experience-*.js`, `Projects-*.js` and `Resume-*.js`, about 0.3 KB each.
+  - **Headless Chrome, 10 checks, all pass in production (`vite preview`) and dev (StrictMode):**
+    - **Routes:** `/`, `/experience`, `/projects` and `/resume` each show the right `<h1>` and tab title, inside `<main id="main">` with the skip link present.
+    - **Redirect:** `/work` ends up at `/experience`.
+    - **404:** `/nope` and `/experience/deep/nope` show the "404" h1 and the "Page not found — …" title inside the layout.
+    - **Warm-up:** while sitting on Home, the browser fetched all 3 lazy chunks once idle (prod only).
+    - **Scroll:** clicking a real `<Link>` from a page scrolled to 800px lands on the new page at the top. The back button returns to the old page at 800px.
+  - **Console:** production logged nothing. Dev showed only the expected `[content]` Drive-link warning.
+  - **Not checked:** the scroll test used a temporary `<Link>` (since removed) because there's no nav yet. Step 7 should click the real header links once.
 - **Decisions / deviations from spec:**
-  - **The validator issues one `console.warn` call** with a bulleted list, not `console.group`. §3.10 asks for a "single grouped warn", and one call keeps it to exactly one console entry.
-  - Inside `validateContent`, the data is assigned to the declared types (`Site`, `Experience[]`, …). This keeps the checks type-safe whatever literal shapes the data files have, for example `avatar: null` or projects without `image`.
+  - **`HydrateFallback: () => null` on the root route in `router.tsx`.** It's not in §4.1. Without it, React Router logs `No HydrateFallback element provided to render during initial hydration` on the first load of every lazy route (`/experience`, `/projects`, `/resume`, `/work`), in production too. React Router already renders nothing while the chunk loads (I checked its source), so declaring it changes no behaviour; it only removes the warning. IMPLEMENTATION.md §4.1 is not updated; tell me if you want it there.
+  - **There's no Header or Footer in `RootLayout` yet.** Steps 7 and 8 build them, and `RootLayout` has `{/* <Header /> — Step 7 */}` and `{/* <Footer /> — Step 8 */}` where they go. Until then there's no nav and no theme toggle on screen; the theme still follows the OS or the stored choice.
+  - The NotFound title is `Page not found — ${site.name}`; §6.6 doesn't specify one. The stubs don't render a `<meta name="description">` yet, because Step 6 asks for only a `<title>` and an `<h1>`. §6 requires one on every page, so add them when the pages are built (Steps 10 to 13).
+  - **Two `<title>` tags end up in `<head>`:** the static one from `index.html` and React's. React puts its own first, so `document.title` is always the page's (checked on every route).
+  - `errorElement: <RootLayout error />`, as in §4.1, also shows the "404" page if a page throws while rendering, which is misleading for a crash. That's how the spec has it; flagging it only.
   - **`src/lib/resume.ts` was created in Step 4, before Step 13.** The validator uses `getDriveId`. Step 13 only needs to build the page that uses it.
   - **The resume iframe uses a wrapper, as agreed with the owner (§6.5).** `mt-8` and `bg-subtle` sit on a wrapper `div`, because an iframe's own background would hide the "Loading preview…" text behind it.
   - **Owner rule (CLAUDE.md "Plugins, skills & MCP servers"):** never install, enable or invoke plugins, skills or MCP servers unless asked in that session. IMPLEMENTATION.md and the `src/index.css` tokens are the only design authority. The frontend-design plugin is enabled in the owner's user-level settings and must not be used. None has been used so far.
+  - From Step 5: the validator logs one `console.warn` call with a bulleted list, and assigns the data to its declared types before checking.
   - From Step 4: the data-file comment headers go slightly beyond the spec (required/optional lists, allowed `mode`/`type` values, Drive sharing instructions).
-  - From Step 3: `eslint.config.js` allows the `useTheme` export via `allowExportNames`. `src/components/ui/ThemeTest.tsx` is **temporary**; Step 6 deletes it and its import and JSX in `main.tsx`.
+  - From Step 3: `eslint.config.js` allows the `useTheme` export via `allowExportNames`.
   - From Step 2: `@source not "../*.md";` in `index.css` stops Tailwind generating classes from the docs. The avatar preload in `index.html` is commented out until `public/avatar.webp` exists.
   - From Step 1: no `baseUrl` in `tsconfig.app.json` (TS 6 rejects it with TS5101; `paths` alone works). `"strict": true` is set explicitly. `public/favicon.svg` is still the Vite logo until Step 14.
 - **Owner needs to provide:** real content in `src/data/*`; the resume's Google Drive share link in `site.resume.driveUrl` (Share → "Anyone with the link" → Viewer); `public/avatar.webp`, `public/og.png` (1200×630; `index.html` already points to it), project images. These can come later; placeholders are fine. The `<title>`, description and OG text in `index.html` are static placeholders ("Your Name"), so update them by hand to match `site.ts`.
 - **Known issues / TODO:**
   - **The placeholder data points at files that don't exist yet:** `site.avatar` (`/avatar.webp`) and project image `/projects/project-one.webp`. Once Steps 11 and 12 render them they'll 404, showing broken images and console errors. Either add the files, or set `avatar: null` and drop `image` until real assets exist.
   - **Expected dev warning:** until a real Drive link is in `site.resume.driveUrl`, every dev page load shows one `[content]` warning about it, and the Step 13 Resume page will show "Resume coming soon." That's intended, but it means "no console warnings in dev" (Definition of done) only holds once the link is pasted. Treat that single warning as expected when checking later steps.
-  - `cn()` isn't used anywhere yet; the first callers arrive in Step 6 (`Container`).
-  - `dates.ts` and `icons.ts` aren't imported by anything rendered yet, so they're tree-shaken out of the production bundle (JS unchanged at 221.25 kB, 69.29 kB gzip). They'll show up in Step 6 onwards.
+  - **Bundle budget is getting close:** the initial JS is now **101.4 KB gzip** (319 KB raw) against Step 15's ~110 KB target, and most of the increase is React Router. `dates.ts` and `icons.ts` are still tree-shaken out because nothing rendered imports them yet; they'll add to this in Steps 8 to 12. Keep an eye on it; Step 15 does the real measurement.
+  - **Each dev page load prints the `[content]` warning once,** because every full reload re-runs the validator. Client-side navigation doesn't re-run it.
   - Git on Windows warns about LF→CRLF. If you want LF everywhere (the Prettier default), add `.gitattributes` with `* text=auto eol=lf`. I didn't add it; ask if you want it.
   - Delete the `.gitkeep` files as real files land in each folder.
 
@@ -85,7 +86,7 @@ _Overwrite this section at the end of every step._
 
 ### Layout
 
-- [ ] **Step 6: Router + RootLayout + page stubs**
+- [x] **Step 6: Router + RootLayout + page stubs**
   Read: §4.1 to §4.4
   `router.tsx`, final `main.tsx`, `RootLayout`, `Container`. Stub pages (Home, Experience, Projects, Resume, NotFound) that each render only a `<title>` and an `<h1>`. Remove the Step 3 test button.
   **Done when:** all routes work; `/work` redirects to `/experience`; unknown URLs show the 404 inside the layout; the tab title changes per route; scroll resets on navigation; lazy chunks appear in the build output.
