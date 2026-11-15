@@ -1200,13 +1200,14 @@ Missing optional fields must render nothing: no empty rows, no stray "·", no em
 
 ### 6.4 Projects (`/projects`)
 
-- `PageHeader` "Projects" + subtitle.
-- `grid gap-5 sm:grid-cols-2`.
-- `ProjectCard` (`compact` prop hides image on Home):
+- `PageHeader` "Projects" + subtitle "Things I've built, with links to the live sites and source code." Description: `` `Projects by ${site.name}.` ``.
+- `grid gap-5 sm:grid-cols-2`, cards `headingAs="h2"`.
+- `ProjectCard` (`src/components/projects/ProjectCard.tsx`) props: `project`, `compact?` (hides the image, Home only), `headingAs?: "h2" | "h3"` (default `"h3"` under a Section h2 on Home; `"h2"` on the Projects page so headings don't skip, same as `ExperienceItem`):
   - `article.group flex flex-col overflow-hidden rounded-lg border border-border transition-colors hover:border-fg/20`
-  - Image (optional): wrapper `overflow-hidden bg-subtle aspect-video`; `img` `size-full object-cover transition-transform duration-500 group-hover:scale-[1.02]`, `width={1280} height={720} loading="lazy" decoding="async"`, `alt={title}`.
-  - Body `flex flex-1 flex-col p-4 sm:p-5`: title + year row (`flex items-baseline justify-between gap-3`, title `min-w-0`), description (body scale, `<p><RichText text={description} /></p>`, §5.8), tech chips, then links `mt-auto pt-4 flex flex-wrap gap-4` → `ExternalLink` "Live" / "Source" only if present.
-  - No whole-card anchor (avoids nested links). Title links to `live ?? github` when available.
+  - Image (optional): wrapper `overflow-hidden bg-subtle aspect-video`; `img` `size-full object-cover transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.02] motion-reduce:transition-none`, `width={1280} height={720} loading="lazy" decoding="async"`, `alt={title}`.
+  - Body `flex flex-1 flex-col p-4 sm:p-5`: title + year row (`flex items-baseline justify-between gap-3`; title `min-w-0 break-words`, item-title scale; year meta scale `shrink-0`), description `mt-2` (body scale, `<p><RichText text={description} /></p>`, §5.8), tech chips `mt-4 flex flex-wrap gap-2`, then links `mt-auto pt-4 flex flex-wrap gap-4` → `ExternalLink` "Live" / "Source" only if present, with `aria-label` `` `Live: ${title}` `` / `` `Source: ${title}` `` so repeated links are distinguishable (visible text first, so label-in-name holds).
+  - No whole-card anchor (avoids nested links). Title links to `live ?? github` when available (`_blank`, `noopener noreferrer`, hover underline + focus ring).
+  - Placeholder `public/projects/project-one.webp` (neutral 1280×720 grey) exists so the sample data doesn't 404; the owner replaces it.
 
 ### 6.5 Resume (`/resume`)
 

@@ -10,62 +10,52 @@ Each step lists the `IMPLEMENTATION.md` sections to read. Read only those.
 
 _Overwrite this section at the end of every step._
 
-- **Last completed step:** Step 10 — Experience item + Experience page. Step 11 (Project card + Projects page) is next.
+- **Last completed step:** Step 11 — Project card + Projects page. Step 12 (Home page) is next.
 - **Files created:**
-  - `src/components/experience/CompanyLogo.tsx`: as in §6.2. The logo tile is `bg-logo` with `alt=""`; the monogram tile is `bg-subtle` and `aria-hidden`.
-  - `src/components/experience/ExperienceItem.tsx` has both modes:
-    - full (default);
-    - `expandable`: chevron, `useId` panel, `inert`, grid-rows accordion.
-
-    It also takes `headingAs` (default `"h3"`). All details blocks follow §6.2.
+  - `src/components/projects/ProjectCard.tsx` (§6.4). Props:
+    - `project`;
+    - `compact?`: hides the image; Home uses it in Step 12;
+    - `headingAs?: "h2" | "h3"`: defaults to `"h3"`; the Projects page passes `"h2"`.
+  - **`public/projects/project-one.webp`:** a neutral grey 1280×720 placeholder (5.5 KB), drawn with headless Chrome's canvas. It stops the sample data from 404ing. **Replace it with a real screenshot.**
 - **Files changed:**
-  - `src/lib/dates.ts`: new `totalExperience(list)`, the time since the earliest start, which feeds the page subtitle.
-  - `src/pages/Experience.tsx`: the real page. It has:
-    - `PageHeader` with the subtitle "1 yr 4 mos of experience." (computed);
+  - `src/pages/Projects.tsx`: the real page. It has:
+    - `PageHeader` with a subtitle;
     - `<meta name="description">`;
-    - a `divide-y divide-border` list, each row `py-8 first:pt-0`, using `headingAs="h2"`.
-  - `IMPLEMENTATION.md`:
-    - §3.8: `totalExperience` added to the code block;
-    - §6.2: the duration line now uses a guarded `duration` variable;
-    - §6.3: the subtitle and description text are spelled out.
-  - Deleted `src/components/experience/.gitkeep`.
-- **Verified with headless Chrome against dev** (320, 375, 768 and 1440px, light and dark, via a CDP script in the session scratchpad):
-  - **Order and badge:** Company A (current, "Working" badge) comes before Company B.
-  - **Duration:** "· 11 mos" is `display:none` below `sm` and inline from 768px up.
-  - **Tiles:**
-    - 40×40 below `sm`, 48×48 from `sm` up;
-    - the logo tile is `rgb(255,255,255)` in light and `rgb(244,244,245)` in dark;
-    - the monogram "C" sits on `bg-subtle`;
-    - the img has `alt=""`, 48/48, lazy, async and `object-contain p-1.5`, and loads (no 404).
-  - **Content column:**
-    - every title, label, chip list, bullet list and links row shares one left edge (76px at 320, 417px at 1440);
-    - the only other x position is the right-aligned date column on `sm+`.
-  - **Labels:** both labels use `text-sm font-medium text-muted`.
+    - a `grid gap-5 sm:grid-cols-2` of cards in data order.
+  - `IMPLEMENTATION.md` §6.4: the props, spacing, easing, aria-labels, subtitle and description are all spelled out.
+  - Deleted `src/components/projects/.gitkeep`.
+- **Step 11 deviations (now in the spec):**
+  - **`headingAs` prop,** for the same reason as ExperienceItem: no h1 → h3 skip on the Projects page.
+  - **"Live"/"Source" get `aria-label`s** such as "Live: Project One", so a screen reader's link list can tell the cards apart. The visible text comes first, so label-in-name holds.
+  - **The image transition uses the spec easing** plus `motion-reduce:transition-none`.
+  - **The subtitle is generic UI copy:** "Things I've built, with links to the live sites and source code." Edit it in `Projects.tsx` if you want different wording.
+- **Verified with headless Chrome against dev**, at 320, 375, 414, 768, 1024, 1440 and 1920px in light and dark. Three temporary projects were added to `projects.ts` for this, and the file was restored from a backup afterwards; `git status` shows no change there. The temporary projects were:
+  - **bare:** no image, links, year or tech, plus rich-text edge cases;
+  - **long title:** an image, source link only, a 66-character single-word title and an unknown tech;
+  - **long text:** a long description and a live link only.
+
+  Results:
+  - **Columns:** 1 below `sm`, 2 from 768px up.
+  - **Rows:** cards in a row have equal heights (for example 401/401 and 432/432), and the links rows' bottoms line up at the same y.
+  - **Cards with missing parts:** the bare card shows title and description only, with no empty rows. The long title wraps and never overflows.
+  - **No nested anchors** (`a a`, `a article`: 0).
+  - **Images:**
+    - `alt` = title, 1280/720, lazy, async;
+    - box at exactly 16:9 at every width;
+    - **CLS = 0** at every width (PerformanceObserver).
   - **RichText:**
-    - one `<strong>` with the metric;
-    - the inline "write-up" and the "Case study" `ExternalLink` both get `_blank` and `noopener noreferrer`;
-    - the links row has `mt-4 flex flex-wrap gap-x-4 gap-y-2`.
-  - **No `border-t`** on the Experience page. The only bordered elements are the tiles, the chips and the StatusBadge.
-  - **Headings** go h1 → h2 → h2. No chevrons on the Experience page.
-  - **Overflow:** no horizontal overflow at any width.
-  - **Console:** only the expected Drive-link `[content]` warning. No errors, no key warnings, no HTTP ≥ 400.
-  - **`expandable` was checked on a temporary render on Home** (since reverted; `Home.tsx` matches its backup and `git status` shows no change). It used 2 real items plus a details-less item with a very long company name:
-    - the chevron is 36×36 with a `size-4` icon, and the h3 stays 24px tall;
-    - `aria-expanded`, `aria-controls` and "Show/Hide details for …" all update;
-    - `rotate` goes `90deg` when open, over 0.3s;
-    - the panel animates `grid-template-rows 0.3s` from 0px to about 396px; mid-animation at 120ms it was 360px high at opacity 0.59;
-    - closed panels are `inert`, height 0 and opacity 0. The Tab order skips their links; once opened, "write-up" and "Case study" join the Tab order after the chevron;
-    - focus rings inside an open panel aren't clipped (the outline box is ≥ 0px inside the overflow box on every side);
-    - **reduced motion:** all three transitions become `1e-05s`, so it opens instantly;
-    - the details-less item has no chevron and no panel, and its long name wraps at 320 and 375px with no overflow;
-    - panel order: `border-t` divider, then Technologies & Tools, then What I've done, then links;
-    - no duration in `expandable` mode.
+    - `**bold**` → `<strong>`;
+    - `[internal link](/experience)` → router `<Link>`, with no target;
+    - `**unclosed`, `[bad](javascript:…)` and `<b>html</b>` all show as literal text.
+  - **Title links:** `live ?? github`, `_blank`, `noopener noreferrer`.
+  - **Headings:** h1 → h2 ×4.
+  - **Hover:** the card border becomes `fg/20`; the image goes to `scale: 1.02` over 0.5s with the spec easing, clipped by `overflow:hidden`.
+  - **Overflow:** none anywhere.
+  - **Console:** only the expected Drive-link `[content]` warning. No errors, no key warnings, no 404s.
   - `pnpm build` and `pnpm lint` are clean. Greps for raw colours, `transition-all` and `dangerouslySetInnerHTML` in the new files: none.
-- **Bundle:** **132.3 KB** gzip initial JS (395.0 KB raw), within the 140 KB cap. The Experience lazy chunk is 2.2 KB gzip.
-- **Step 10 deviations (small, already in the spec):**
-  - **The duration span renders only when `formatDuration` is non-empty,** so a future start date can't leave a stray "·".
-  - **The role/type line is guarded with `subtitle &&`.** `role` is required, so it always shows in practice.
-  - **The company `<a>`/`<span>` gets `min-w-0`,** so a long single-word name can wrap inside the flex heading. The `<a>` also has `underline-offset-4 hover:underline` plus the focus ring (the spec only said "…").
+  - **Not tested:** `compact` mode wasn't rendered. It's a single `!compact` condition on the image, and Step 12 renders it on Home.
+- **Bundle:** **132.3 KB** gzip initial JS (395.0 KB raw), unchanged and within the 140 KB cap. The Projects lazy chunk is 1.2 KB gzip.
+- **Session note:** in the last session `TaskStop` killed `pnpm dev` but left its Vite child alive on port 5199. This session found it and stopped it. Next time, check the port before starting a dev server.
 - **Owner decisions (final; don't reopen):**
   1. **After Step 8:** the three Step 8 deviations are accepted and documented (36px social icon links; `links: readonly Social[]`; `validate.ts` hot-accept). The 320px nav keeps the horizontal-scroll fallback (§4.5 has the real measurements).
   2. **Consolidation pass, bundle:** initial JS **≤ 140 KB gzip, a hard cap** (supersedes Step 8's 130 KB). If it's exceeded later, **code-split; never raise it again, and keep the full `SOCIAL_ICONS` and `TECH_ICONS` registries.** Recorded in §8, CLAUDE.md DoD #7 and Step 15.
@@ -80,6 +70,13 @@ _Overwrite this section at the end of every step._
      - CopyEmail details;
      - `copy()` returning `Promise<boolean>`.
 - **Decisions / deviations from spec** (everything below is now reflected in IMPLEMENTATION.md):
+  - **From Step 10:**
+    - the duration span renders only when it is non-empty, so there is no stray "·";
+    - the role/type line is guarded;
+    - the company `<a>`/`<span>` gets `min-w-0`, and the `<a>` gets a hover underline.
+
+    `totalExperience` was added to `lib/dates.ts` for the page subtitle.
+  - **From Step 11:** see the Step 11 deviations above. `ProjectCard` also has `headingAs`.
   - **Consolidation pass:**
     - **`ExperienceItem` gets a `headingAs?: "h2" | "h3"` prop.** It isn't one of decisions A–I, but it's needed so the Experience page doesn't jump from h1 to h3, which would fail Phase 5's "heading levels don't skip". Home uses h3 (under the Section's h2); the Experience page uses h2.
     - **`expandable` replaces the old `compact` prop** (§6.2), so the item has only one mode flag.
@@ -95,7 +92,7 @@ _Overwrite this section at the end of every step._
     - `min-w-0` on `<nav>`, `whitespace-nowrap` on links, and `size-4.5` toggle icons.
   - From Step 6:
     - Two `<title>` tags end up in `<head>`; React's comes first, so the tab title is right.
-    - Pages still lack `<meta name="description">`; add them in Steps 10 to 13 (Experience done in Step 10). The static description in `index.html` stays first in `<head>`, so each page ends up with two; review it in Step 15 or 17.
+    - Pages still lack `<meta name="description">`; add them in Steps 10 to 13 (Experience and Projects done). The static description in `index.html` stays first in `<head>`, so each page ends up with two; review it in Step 15 or 17.
     - `errorElement` shows "404" even when a page crashes.
   - From Step 4: `src/lib/resume.ts` exists early, because the validator uses `getDriveId`. The data-file comment headers go beyond the spec.
   - From Step 3: `eslint.config.js` allows the `useTheme` export via `allowExportNames`.
@@ -104,19 +101,19 @@ _Overwrite this section at the end of every step._
   - real content in `src/data/*`;
   - the resume's Google Drive share link in `site.resume.driveUrl` (Share → "Anyone with the link" → Viewer);
   - `public/avatar.webp` and `public/og.png` (1200×630);
-  - project images;
+  - project images: replace the placeholder `public/projects/project-one.webp`;
   - **real company logos in `public/logos/`** (square `.svg`/`.webp`). Replace `company-a.svg`, or drop `logo` to get a letter tile.
 
   Placeholders are fine until then. The `<title>`, description and OG text in `index.html` are static placeholders, so edit them by hand to match `site.ts`.
 - **Known issues / TODO:**
-  - **Missing placeholder files:** `site.avatar` (`/avatar.webp`) and `/projects/project-one.webp` don't exist yet, so they'll 404 once Steps 11 and 12 render them. Add the files, or set `avatar: null` and drop `image`. The logo placeholder does exist.
+  - **Missing placeholder file:** `site.avatar` (`/avatar.webp`) doesn't exist yet, so it will 404 once Step 12 renders it. Add the file, or set `avatar: null`. The logo and project-image placeholders exist.
   - **Expected dev warning:** the single `[content]` warning about the placeholder Drive link appears until a real link is pasted. It prints once per full page load and after each hot data edit.
   - **Nav at 320px:** after navigating to `/resume`, the active "Resume" link stays partly clipped. **Fixed in Step 16** (scroll-into-view on route change, §4.5).
   - **Footer border at 1440px:** the full-width top border stops about 15px short of the right edge, at the scrollbar gutter. **Fixed in Step 16** (the hairline moves onto an inner element, §4.7).
   - **Footer socials at 320px in desktop Chrome wrap to 2 rows.** The 15px classic scrollbar gutter leaves 265px for 276px of icons; phones, with overlay scrollbars, show 1 row. **Look at it in Step 16:** for example `gap-0` below `sm` (252px), or accept the wrap.
   - **The Step 9 preview on Home is temporary.** Step 12 replaces it.
   - Git on Windows warns about LF→CRLF. Add `.gitattributes` with `* text=auto eol=lf` if you want LF everywhere; ask first.
-  - Delete the `.gitkeep` files as real files land in each folder (`projects/` still has one).
+  - Delete the `.gitkeep` files as real files land in each folder (all folders that had one now have real files).
 
 ---
 
@@ -202,7 +199,7 @@ _Overwrite this section at the end of every step._
     - with reduced motion it opens instantly;
     - **no chevron when an item has no tech, highlights or links**.
 
-- [ ] **Step 11: Project card + Projects page**
+- [x] **Step 11: Project card + Projects page**
   Read: §6.4, §5.8
   **Done when:** 1 column on mobile, 2 on `sm+`; cards in a row line up; projects with no image or links still look intentional; no nested anchors; images lazy-load with no layout shift; **descriptions render through `RichText`** (`**bold**` and `[label](url)` work, broken markers show as text); the page has its `<meta name="description">`.
 
@@ -280,4 +277,4 @@ _Overwrite this section at the end of every step._
 
 Visual tweaks to review with the owner at Step 16. Add a line here instead of doing it straight away.
 
--
+- **Projects grid:** a card with no image next to one with an image gets a tall empty area, because grid rows stretch. Options: `items-start` (but then links rows stop lining up), or accept it as is. Seen with temporary data in Step 11.
