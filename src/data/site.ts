@@ -3,7 +3,8 @@ import type { Site } from "@/types/content";
 /**
  * Global site info. Edit freely.
  * Required: name, role, bio[] (paragraphs; rich text: **bold** and [label](url)), email, avatar (path or null), url,
- *   resume { driveUrl, updated: "YYYY-MM" }, home { experienceLimit, projectLimit } (both ≥ 1)
+ *   resume { driveUrl, updated: "YYYY-MM" }, home { experienceLimit, projectLimit (both ≥ 1), highlightLimit (≥ 0) }
+ * home.highlightLimit: how many highlights per job Home shows (the first N, so order them by importance). 0 = none.
  * resume.driveUrl: Google Drive share link (Share → "Anyone with the link" → Viewer → Copy link).
  *   To update the resume, upload a new version in Drive (Manage versions); the link stays the same.
  * Optional: tagline, location
@@ -25,6 +26,7 @@ export const site = {
   },
   home: {
     experienceLimit: 3,
-    projectLimit: 4,
+    projectLimit: 3,
+    highlightLimit: 2,
   },
 } satisfies Site;

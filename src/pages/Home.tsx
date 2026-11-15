@@ -2,7 +2,7 @@ import { Fragment } from "react";
 import { Link } from "react-router-dom";
 import { Container } from "@/components/layout/Container";
 import { ExperienceItem } from "@/components/experience/ExperienceItem";
-import { ProjectCard } from "@/components/projects/ProjectCard";
+import { ProjectRow } from "@/components/projects/ProjectRow";
 import { CopyEmail } from "@/components/ui/CopyEmail";
 import { Reveal } from "@/components/ui/Reveal";
 import { RichText } from "@/components/ui/RichText";
@@ -20,8 +20,11 @@ import type { Project, Site } from "@/types/content";
 const info: Site = site;
 const work: readonly Project[] = projects;
 
+// "View all …" links below a list
 const ACTION =
-  "shrink-0 text-sm font-medium text-muted transition-colors hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg";
+  "mt-8 inline-block text-sm font-medium text-muted transition-colors hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg";
+// Same divider rhythm as the Experience page; last:pb-0 so the gap below a list is set by what follows it
+const ROW = "py-8 first:pt-0 last:pb-0";
 
 export default function Home() {
   const jobs = sortExperience(experience).slice(0, info.home.experienceLimit);
@@ -70,42 +73,38 @@ export default function Home() {
 
       {jobs.length > 0 && (
         <Reveal step={3}>
-          <Section
-            title="Experience"
-            action={
-              experience.length > jobs.length && (
-                <Link to="/experience" className={ACTION}>
-                  View all →
-                </Link>
-              )
-            }
-          >
-            <div className="space-y-8">
+          <Section title="Experience">
+            {/* Same list layout as the Experience page */}
+            <div className="divide-y divide-border">
               {jobs.map((item) => (
-                <ExperienceItem key={`${item.company}-${item.start}`} item={item} expandable />
+                <div key={`${item.company}-${item.start}`} className={ROW}>
+                  <ExperienceItem item={item} preview />
+                </div>
               ))}
             </div>
+            {/* Always shown: tech, links and the remaining highlights only live on /experience */}
+            <Link to="/experience" className={ACTION}>
+              View all experience →
+            </Link>
           </Section>
         </Reveal>
       )}
 
       {shownProjects.length > 0 && (
         <Reveal step={4}>
-          <Section
-            title="Featured projects"
-            action={
-              work.length > shownProjects.length && (
-                <Link to="/projects" className={ACTION}>
-                  All projects →
-                </Link>
-              )
-            }
-          >
-            <div className="grid gap-4 sm:grid-cols-2">
+          <Section title="Featured projects">
+            <div className="divide-y divide-border">
               {shownProjects.map((project) => (
-                <ProjectCard key={project.title} project={project} compact />
+                <div key={project.title} className={ROW}>
+                  <ProjectRow project={project} />
+                </div>
               ))}
             </div>
+            {work.length > shownProjects.length && (
+              <Link to="/projects" className={ACTION}>
+                View all projects →
+              </Link>
+            )}
           </Section>
         </Reveal>
       )}

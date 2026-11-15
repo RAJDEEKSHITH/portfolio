@@ -7,7 +7,9 @@ import type { Experience } from "@/types/content";
  *   mode: "On-site" | "Remote" | "Hybrid"
  *   type: "Full-time" | "Part-time" | "Internship" | "Contract" | "Freelance"
  *   logo: square image in public/logos, .svg or .webp → "/logos/acme.svg". Omit it → a letter tile.
- *   links: [{ label: "Case study", url: "https://…" }] → shown after the highlights.
+ *   links: [{ label: "Case study", url: "https://…" }] → shown after the highlights (Experience page only).
+ *
+ * Order highlights by importance; the first N (site.home.highlightLimit) appear on Home.
  *
  * highlights support rich text: **bold** and [label](url). Nothing else (no italics, no HTML).
  *   - Lead with the result, then how: "Cut build time **from 9 min to 2 min** by moving to Vite."

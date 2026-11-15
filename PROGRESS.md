@@ -53,7 +53,149 @@ _Overwrite this section at the end of every step._
 - **⚠ Not verifiable without the owner's file:** that "Download" actually downloads and that the preview renders the real PDF. **Once you paste the real share link into `site.resume.driveUrl`, open `/resume` and click both buttons.**
   - If Download opens a "can't scan for viruses" page instead, the file is over about 100 MB; that won't happen for a resume.
   - If the preview says "access denied", the file isn't shared as "Anyone with the link".
-- **Bundle: 135.2 KB gzip initial JS, within the 140 KB cap.** That's `index` at 130.07 KB plus a modulepreloaded shared chunk at 5.13 KB.
+- **Change after Step 13 (owner request): the Home accordion was replaced by a "preview" layout.** No step was ticked.
+  - **`ExperienceItem`:**
+    - **accordion removed entirely:** the `expandable` prop, chevron button, panel, `grid-rows` animation, `inert`, `useId`/`useState`, aria labels, `EASE` and `hasDetails`;
+    - **new `preview?: boolean` (Home only):** the same tile and title/date row (duration hidden), then the first `site.home.highlightLimit` highlights as the same RichText bullet list. Nothing else: no tech chips and no links row.
+    - **Decision:** in preview mode the list sits `mt-4` under the header **without the "What I've done" label**. It's the only block, so the label adds nothing; the bullets keep the same font, colour and spacing.
+    - The item reads `site.home.highlightLimit` itself, typed as `Site["home"]`, and clamps it with `Math.max(0, …)`, so a bad negative value renders no bullets rather than `slice(0, -1)`.
+  - **`Home.tsx`:**
+    - the Experience section uses the Experience page's wrapper (`divide-y divide-border`, items in `py-8 first:pt-0`);
+    - the header "View all →" action is gone. **"View all experience →"** (to `/experience`, the action-link classes) now sits below the list and is shown whenever the section renders, i.e. whenever there's any experience.
+  - **Data:**
+    - `Site.home.highlightLimit: number` in `types/content.ts`, set to `highlightLimit: 2` in `site.ts`;
+    - a validator check: `site.home.highlightLimit is X; must be ≥ 0`;
+    - headers: `site.ts` explains the field; `experience.ts` says "Order highlights by importance; the first N (site.home.highlightLimit) appear on Home." and that links show on the Experience page only;
+    - type comments: `highlights` and `links` are updated.
+  - **Docs:**
+    - **`CLAUDE.md`:**
+      - the accordion layout-animation exception is removed ("No layout animation anywhere");
+      - the durations line keeps 300ms for the theme icon swap;
+      - a new owner-table row, "Highlights on Home".
+    - **`IMPLEMENTATION.md`:**
+      - §1 (Experience on Home decision);
+      - §3.1, §3.2, and also §3.5 (header) and §3.10 (validator line), because a data shape changed;
+      - §6.1 item 4;
+      - §6.2 (preview props/mode; Details now say tech and links are full-mode only; the accordion block is deleted);
+      - §6.3;
+      - the Phase 5 acceptance;
+      - §7 (accordion and chevron rows removed; no layout animation anywhere);
+      - §9 (chevron tap target and accordion check replaced by "Home shows the first N highlights, matching the Experience page style");
+      - also §11 (owner reference line) and §12 (phase 5 list).
+    - **PROGRESS:** the accordion items are removed from Steps 14 and 16.
+  - **Copy-icon duration: the request said to keep 300ms "for the theme and copy icons", but the copy ↔ check crossfade is 200ms** in both the code (`CopyEmail.tsx`) and §7. I didn't change the code; CLAUDE.md now says the theme swap is 300ms and the copy crossfade 200ms (§7). **Owner answered: keep the copy icon at 200ms** (as documented).
+  - Step 20 didn't exist then; it's now parked (see the next entry).
+  - **Verified with headless Chrome against dev** at 320, 768 and 1440px, light and dark. `site.ts` and `experience.ts` were backed up and restored byte-for-byte (`cmp`). A temporary third job, "Company C With A Rather Long Name Incorporated", had **no highlights**, plus tech and links.
+    - **`highlightLimit: 2`:**
+      - Home shows 2, 1 and 0 bullets; the Experience page shows 3, 1 and 0;
+      - on Home: no tech chips, no labels, and no links beyond the inline RichText "write-up"; the bold renders;
+      - no `button[aria-controls]` or `[inert]` anywhere;
+      - **the same design on both pages:** identical `divide-y` wrapper and item padding (0/32, then 32/32), tile size (40px, or 48px from `sm`), header height, bullet left edge (0px from the content column) and bullet font/colour (15px/24.4px muted);
+      - the job without highlights shows just its header;
+      - the duration appears only on the Experience page (`sm+`);
+      - h3 on Home, h2 on Experience;
+      - "View all experience →" → `/experience` works, and there's no header action.
+    - **`highlightLimit: 0`:** headers only on Home; the link still shows; screenshot checked.
+    - **`highlightLimit: 10`:** every highlight (3, 1, 0), still no chips or links.
+    - **`highlightLimit: -1`:** the validator warns and Home renders 0 bullets.
+    - No horizontal overflow anywhere. The console shows only the expected Drive warning (plus the `-1` warning in that run).
+  - `pnpm build` and `pnpm lint` are clean. `grep` in `src` for `grid-rows`, `grid-template-rows`, `expandable`, `inert`, `useId`, `LuChevron` and `transition-all`: none.
+  - **Bundle after the accordion change: 134.95 KB gzip initial JS** (`index` 129.84 + shared chunk 5.11), down from 135.2 KB. Superseded by the part 2 entry.
+- **Change after Step 13, part 2 (owner request): project links → icon columns; Home projects → list.** No step was ticked.
+  _The slot/placeholder parts below (`getLinkSlots`, the `slots` props, the empty `size-9` spans, the column offsets) were **superseded by the fix that follows this entry**; everything else still stands._
+  - **Data:**
+    - `Project.links` is now `ProjectLinkUrls = { github?; youtube?; live? }`, all optional; `ProjectLinkType = keyof ProjectLinkUrls`;
+    - `site.home.projectLimit` is now 3;
+    - **placeholder projects:**
+      - One: all three links, featured, image;
+      - Two: GitHub + Live, featured, a `**bold**` description;
+      - Three: GitHub only, not featured, so Home shows "View all projects →".
+    - the `projects.ts` header documents links and the title-link order;
+    - the validator warns on any present but blank `links.*` (`links.youtube is empty (remove the key or add a URL)`).
+  - **New `src/lib/projectLinks.ts`:**
+    - `PROJECT_LINK_TYPES` (the fixed order) and `PROJECT_LINK_LABELS`;
+    - `getProjectLink`: blank strings count as missing, so a `""` never creates a column or an empty `href`;
+    - `getLinkSlots(list)` and `getTitleHref` (live ?? github ?? youtube).
+  - **New components in `components/projects/`:**
+    - **`ProjectLinks`:**
+      - size-9 icon links (`FaGithub` / `FaYoutube` / `LuGlobe`), new tab, `aria-label` and `title` like "GitHub: Project One" / "Live site: Project One";
+      - missing → `<span aria-hidden className="size-9" />`;
+      - renders `null` when `slots` is empty.
+    - **`ProjectHeader`:**
+      - the shared title row: the title + year block on the left (`min-w-0`, wraps), `ProjectLinks` on the right;
+      - `-my-1.5 sm:-my-1` centres the icons on the first title line.
+    - **`ProjectRow`:** the Home row (header, then the description with `line-clamp-2`).
+  - **`ProjectCard`:**
+    - **`compact` removed** (nothing used it), along with the "Live"/"Source" `ExternalLink` row;
+    - the title row is now `ProjectHeader`, and it takes `slots`;
+    - everything else is unchanged.
+  - **Decision:** **the year moved next to the title** (left side) on cards too. The right side of the title row now holds the icons, and the card and the Home row share one header component.
+  - **`Projects.tsx`:** `const slots = getLinkSlots(projects)` at module level.
+  - **`Home.tsx`:**
+    - Featured projects is a `divide-y` list of `ProjectRow`s with `getLinkSlots(shownProjects)`;
+    - "View all projects →" sits below the list when `projects.length > shown`.
+    - **Both Home lists now use `py-8 first:pt-0 last:pb-0`, and `ACTION` is `mt-8 inline-block …`.** The gap to the link is still 32px. This avoids a double gap (32px padding plus the section's `mt-16`) when the projects list has no link below it.
+    - Neither Home section has a header action any more.
+  - **Docs:**
+    - **`IMPLEMENTATION.md`:**
+      - §3.1, §3.2 (`projectLimit: 3`), §3.6 (header, the three-project placeholder data, the `projectLinks.ts` helpers), §3.10;
+      - §6.1 items 4 (row/ACTION classes) and 5;
+      - §6.4 (`ProjectLinks`, `ProjectHeader`, `ProjectCard` props and body);
+      - the Phase 5 acceptance wording;
+      - §9 (the new icon-column check);
+      - §11.
+    - **`CLAUDE.md`:**
+      - the owner-table row "Project links";
+      - the "Add a project" row mentions `projectLimit`;
+      - the Architecture tree lists the new components and `projectLinks.ts`.
+    - **This file:** Step 20 is parked, and the Ideas entries are updated.
+  - **Verified with headless Chrome against dev** at 320, 768 and 1440px, light and dark. `projects.ts` was backed up and restored byte-for-byte (`cmp`).
+    - **A:** the default data plus a temporary featured project with no links and a long title.
+      - **Home:** 3 rows, and "View all projects →" goes to `/projects`. Slot offsets from the row's right edge are identical on every row (80/40/0); empty slots are 36×36 with `aria-hidden` and `tabIndex -1`.
+      - **Projects:** offsets are identical on every card (97/57/17 at 320px, 101/61/21 from `sm`).
+      - **Every icon is centred on the first title line** (offset 0).
+      - The no-links title is plain text, with no `<a>`, and wraps beside the reserved slots.
+      - The description is clamped to 2 lines on Home and unclamped on cards; Home has no image or chips.
+      - `target="_blank"` and `rel="noopener noreferrer"` are on every icon link.
+    - **B:** no YouTube anywhere, plus `youtube: ""` on Three. **Only 2 columns** on both pages; the blank counts as missing; the validator warns.
+    - **C:** every project featured. "View all projects" is hidden.
+    - **Keyboard (1440px):** Tab goes title → GitHub → YouTube → Live per project, skipping placeholders and the plain-text title. No placeholder is focusable, and every link shows the focus ring.
+    - No horizontal overflow anywhere. The console shows only the expected Drive warning (plus the blank-link warning in B).
+  - **Worth a look** (also in Ideas):
+    - **A project with no links still reserves the empty slots** (108px with 3 slots). That's correct per "empty slots keep their space", but on a 320px card the long title wrapped to 6 lines.
+    - The option: skip the placeholders when a project has **no** links at all (there's nothing in that row to align). Not done; it's your call.
+  - `pnpm build` and `pnpm lint` are clean. No `compact` or project `ExternalLink` usage is left (`ExternalLink` is still used by `ExperienceItem` links).
+  - **Bundle: 135.24 KB gzip initial JS** (`index` 130.09 + shared chunk 5.15), up from 134.95 KB. `ProjectCard` is now only in the lazy Projects chunk (0.76 KB gzip).
+- **Fix (owner: "fix: project link icons, option B"):** the project link icons are now **flush right with no placeholders**. No step was ticked.
+  - **`ProjectLinks`:**
+    - renders only the links a project has, packed with `gap-1` in the order GitHub · YouTube · Live;
+    - the container is `ml-auto flex shrink-0 justify-end gap-1`;
+    - it returns `null` when there are no links, so the title gets the full row.
+  - **Removed as dead code:**
+    - `getLinkSlots`;
+    - the `slots` prop on `ProjectLinks`, `ProjectHeader`, `ProjectRow` and `ProjectCard`;
+    - the slot computation in `Home.tsx` and `Projects.tsx`;
+    - the placeholder `<span>`.
+    `PROJECT_LINK_TYPES` is kept (it's the display order).
+  - **Docs:**
+    - **`IMPLEMENTATION.md`:**
+      - §6.1 (the `projectSlots` line removed);
+      - §6.4 (`ProjectLinks`/`ProjectHeader`/`ProjectCard` props and the flush-right rule);
+      - §9 (the icon-column box replaced with the flush-right rule);
+      - also §3.6 (the `getLinkSlots` helper line removed; "slot order" became "display order").
+    - **Ideas:** the "no-links project keeps empty slots" entry is removed (resolved).
+  - **Verified with headless Chrome against dev** at 320 and 1440px, light and dark, using the default data plus a temporary featured no-links project with a long title. `projects.ts` was restored byte-for-byte (`cmp`).
+    - **The last icon's right edge equals the title row's right edge on every row and card:**
+      - Home: 300 at 320px and 1073 at 1440px, **identical to the Experience date column's right edge**;
+      - cards: 283 at 320px, and 682/1052 at 1440px (the inner padding edge);
+    - the gap is 4px, and icons are centred on the first title line;
+    - **the no-links title now uses the full row:** 2 lines instead of 4 on Home at 320px, and 3 instead of 6 on the card;
+    - Tab order: title → GitHub → YouTube → Live per project;
+    - no horizontal overflow;
+    - only the expected Drive warning in the console.
+  - **Note:** with option B, GitHub isn't in the same column across rows with different link counts. That's the accepted trade-off.
+  - `pnpm build` and `pnpm lint` are clean. **Bundle: 135.23 KB gzip initial JS** (`index` 130.08 + shared chunk 5.15).
+- **Bundle at Step 13 (superseded by the line above): 135.2 KB gzip initial JS, within the 140 KB cap.** That's `index` at 130.07 KB plus a modulepreloaded shared chunk at 5.13 KB.
   - Vite/Rolldown now splits code shared between the eager entry and the lazy pages (it includes `react-icons/lu`, which Resume now imports) into a chunk it happens to name `PageHeader-*.js`. `index.html` modulepreloads it, so count it as initial.
   - Up from 134.4 KB. The lazy Resume chunk is 0.91 KB.
 - `pnpm build` and `pnpm lint` are clean (rerun after restoring `site.ts`). Greps on both pages: no raw colours, `transition-all` or `dangerouslySetInnerHTML`.
@@ -61,10 +203,7 @@ _Overwrite this section at the end of every step._
 - **Owner decisions (final; don't reopen):**
   1. **After Step 8:** the three Step 8 deviations are accepted and documented (36px social icon links; `links: readonly Social[]`; `validate.ts` hot-accept). The 320px nav keeps the horizontal-scroll fallback (§4.5 has the real measurements).
   2. **Consolidation pass, bundle:** initial JS **≤ 140 KB gzip, a hard cap** (supersedes Step 8's 130 KB). If it's exceeded later, **code-split; never raise it again, and keep the full `SOCIAL_ICONS` and `TECH_ICONS` registries.** Recorded in §8, CLAUDE.md DoD #7 and Step 15.
-  3. **Consolidation pass, accordion:**
-     - the chevron is `size-9` (36px tap area) with a `size-4` icon (decision E updated);
-     - the Experience page shows the labelled blocks without a `border-t`;
-     - panel labels are `text-sm font-medium text-muted`.
+  3. **Consolidation pass, accordion: superseded after Step 13.** The owner replaced the accordion with the Home preview layout, so the chevron decision no longer applies. Still valid: the Experience page shows the labelled blocks without a `border-t`, and labels are `text-sm font-medium text-muted`.
   4. **Consolidation pass, other fixes:** all the extra fixes are accepted: `baseUrl`, `@source not`, `HydrateFallback`, the skip-link ring, the 300ms state-toggle rule, and safe link schemes in RichText.
   5. **Step 9 deviations accepted and now in the spec:**
      - TechChip's direct registry read;
@@ -88,10 +227,9 @@ _Overwrite this section at the end of every step._
   - **From Step 13:** the Resume button icons, no `Reveal` on Resume/404, and the 320px button wrap (all in §6.5).
   - **Consolidation pass:**
     - **`ExperienceItem` gets a `headingAs?: "h2" | "h3"` prop.** It isn't one of decisions A–I, but it's needed so the Experience page doesn't jump from h1 to h3, which would fail Phase 5's "heading levels don't skip". Home uses h3 (under the Section's h2); the Experience page uses h2.
-    - **`expandable` replaces the old `compact` prop** (§6.2), so the item has only one mode flag.
+    - ~~`expandable` replaces the old `compact` prop~~: superseded after Step 13 by `preview` (§6.2), still a single mode flag.
     - **Inline RichText links get the standard focus ring** in addition to the spec'd link classes.
-    - **The chevron button has `-my-1.5`,** so its 36px hit area doesn't make the title line taller.
-    - **The panel has `-mx-1 px-1` and `pb-1`,** so `overflow-hidden` doesn't clip focus rings.
+    - ~~Chevron `-my-1.5` and panel `-mx-1 px-1 pb-1`~~: removed with the accordion after Step 13.
   - From Step 9: see Owner decisions #5. `getTechIcon` is still exported but unused in render code.
   - From Step 8: `{...(!isMail && {...})}` became an `external` object, with the same behaviour.
   - From Step 7:
@@ -236,8 +374,8 @@ _Overwrite this section at the end of every step._
 
 - [ ] **Step 14: Motion + polish pass**
   Read: §7
-  Audit every animation against the allowed list (§7 table, including the copy-icon crossfade, accordion and chevron); remove anything else. Add the SVG favicon. Check focus rings and `::selection`.
-  **Done when:** no `transition-all` and no `dangerouslySetInnerHTML` anywhere (`grep`); the only layout animation is the accordion's `transition-[grid-template-rows]` (`grep`); reduced motion turns everything off (the accordion and chevron included); theme switch has no fade lag.
+  Audit every animation against the allowed list (§7 table, including the copy-icon crossfade); remove anything else. Add the SVG favicon. Check focus rings and `::selection`.
+  **Done when:** no `transition-all` and no `dangerouslySetInnerHTML` anywhere (`grep`); no layout animation anywhere (`grep` for `grid-template-rows`, `grid-rows`, width/height transitions finds nothing); reduced motion turns everything off; theme switch has no fade lag.
 
 - [ ] **Step 15: Performance pass**
   Read: §8
@@ -251,7 +389,7 @@ _Overwrite this section at the end of every step._
   - **Footer: move `border-t border-border` off `<footer>` and onto an inner element inside the `<Container>`** (decided by the owner), so the hairline matches the text width exactly at every screen size and never reaches the scrollbar gutter. Don't put it on the Container itself, because that would include its `px-5 sm:px-6` padding. For example, wrap the row in a `<div className="flex … border-t border-border py-8">` inside `<Container>`, keeping the existing flex classes. Check 320, 768 and 1440px in both themes: the line's ends must align with the © text and the last social icon's box.
   - **Footer socials at 320px on desktop browsers** (classic scrollbar gutter) wrap to 2 rows; see Known issues. Decide: tighten the gap below `sm`, or accept the wrap.
   - **Review the "Ideas / later" list** at the bottom of this file with the owner; do only the items they pick.
-  **Done when:** every §9 box is satisfied (including the new ones: tap targets ≥ 36px including the chevron, tile alignment, accordion keyboard and `inert`, rich-text links); the two owner requests above are done and checked; the footer-wrap decision is made; list anything still imperfect in Handoff notes.
+  **Done when:** every §9 box is satisfied (including the new ones: tap targets ≥ 36px, tile alignment, Home showing the first N highlights in the Experience page style, project link icon columns, rich-text links); the two owner requests above are done and checked; the footer-wrap decision is made; list anything still imperfect in Handoff notes.
 
 - [ ] **Step 17: Deploy prep + README**
   Read: §10, §11
@@ -279,10 +417,22 @@ _Overwrite this section at the end of every step._
 
   The owner reviews the branch and merges it. Only after the merge does the CLAUDE.md View Transitions exception apply.
 
+- [ ] **Step 20 (optional): Adaptive Home for zero experience** (parked; don't build)
+  - **Scope:**
+    - project highlights;
+    - a "detailed" `ProjectCard` variant;
+    - Home goes projects-first when `experience.length === 0`;
+    - `getVisibleNav()` hides empty pages;
+    - an `/experience` redirect.
+  - Behaviour with ≥ 1 job stays unchanged.
+  - **The owner will provide the spec.**
+
 ---
 
 ## Ideas / later
 
 Visual tweaks to review with the owner at Step 16. Add a line here instead of doing it straight away.
 
-- **Projects grid:** a card with no image next to one with an image gets a tall empty area, because grid rows stretch. Options: `items-start` (but then links rows stop lining up), or accept it as is. Seen with temporary data in Step 11.
+- **Projects grid:** a card with no image next to one with an image gets a tall empty area, because grid rows stretch. Seen with temporary data in Step 11, and again with the new placeholder data (Project One has an image; Two and Three don't).
+  - **Updated:** the links now live in the title row, so `items-start` no longer breaks link alignment. The cards would just end at different heights.
+  - Options: `items-start`, or accept it as is.

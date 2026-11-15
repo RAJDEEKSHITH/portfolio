@@ -41,7 +41,7 @@ Starting point: Vite React + TypeScript project with Tailwind v4 already configu
 | Tech chips | Icon + label, monochrome | More readable than icon-only tiles; black brand icons (Next.js, Vercel) don't vanish in dark mode. |
 | Formatted text | `**bold**` + `[label](url)` only, via a tiny tokenizer (`<RichText>`, §5.8) | Enough to highlight one metric or link a write-up. No Markdown library, no `dangerouslySetInnerHTML`, unsafe link schemes fall back to text. |
 | Company logos | Optional `logo`; every job always shows a tile (logo or letter) | Rows align whether or not a logo exists. |
-| Experience on Home | Accordion: header row always visible, details behind a chevron (§6.2) | Home stays scannable; details are one tap away. The Experience page shows everything. |
+| Experience on Home | Preview: the same item design as the Experience page, showing the header plus the first `site.home.highlightLimit` highlights, and an always-visible "View all experience →" link (§6.1, §6.2) | Home stays scannable with no hidden UI or layout animation; the full details (tech, links, every highlight) live on `/experience`. |
 | Bundle budget | Initial JS ≤ **140 KB gzip, hard cap** (§8) | Keeps the full icon registries. Over the cap → code-split, never raise it again. |
 
 ---
@@ -348,7 +348,8 @@ export type Site = {
   url: string;
   /** driveUrl: Google Drive share link ("Anyone with the link"); preview/view/download URLs are derived in lib/resume.ts */
   resume: { driveUrl: string; updated: YearMonth };
-  home: { experienceLimit: number; projectLimit: number };
+  /** highlightLimit: how many highlights per job the Home preview shows (0 = header only) */
+  home: { experienceLimit: number; projectLimit: number; highlightLimit: number };
 };
 
 export type NavItem = { label: string; to: string };
@@ -377,11 +378,15 @@ export type Experience = {
   /** square logo in /public/logos, .svg or .webp, e.g. "/logos/acme.svg". No logo → monogram tile */
   logo?: string;
   tech?: string[];
-  /** Rich text: **bold** and [label](url) */
+  /** Rich text: **bold** and [label](url). Ordered by importance: Home shows the first site.home.highlightLimit */
   highlights?: string[];
-  /** Shown after the highlights (inside the expandable panel on Home) */
+  /** Shown after the highlights (Experience page only) */
   links?: ExperienceLink[];
 };
+
+/** All optional. Shown as icon links in a fixed order: GitHub · YouTube · Live (components/projects/ProjectLinks) */
+export type ProjectLinkUrls = { github?: string; youtube?: string; live?: string };
+export type ProjectLinkType = keyof ProjectLinkUrls;
 
 export type Project = {
   title: string;
@@ -389,7 +394,7 @@ export type Project = {
   description: string;
   year?: number;
   tech?: string[];
-  links?: { live?: string; github?: string };
+  links?: ProjectLinkUrls;
   /** path in /public, 16:9 webp, e.g. 1280×720 */
   image?: string;
   featured?: boolean;
@@ -421,8 +426,9 @@ export const site = {
     updated: "2026-11",
   },
   home: {
-    experienceLimit: 3,
-    projectLimit: 4,
+    experienceLimit: 3, // ≥ 1
+    projectLimit: 3, // ≥ 1
+    highlightLimit: 2, // ≥ 0: highlights per job on Home (the first N, so order them by importance)
   },
 } satisfies Site;
 ```
@@ -478,7 +484,9 @@ import type { Experience } from "@/types/content";
  *   mode: "On-site" | "Remote" | "Hybrid"
  *   type: "Full-time" | "Part-time" | "Internship" | "Contract" | "Freelance"
  *   logo: square image in public/logos, .svg or .webp → "/logos/acme.svg". Omit it → a letter tile.
- *   links: [{ label: "Case study", url: "https://…" }] → shown after the highlights.
+ *   links: [{ label: "Case study", url: "https://…" }] → shown after the highlights (Experience page only).
+ *
+ * Order highlights by importance; the first N (site.home.highlightLimit) appear on Home.
  *
  * highlights support rich text: **bold** and [label](url). Nothing else (no italics, no HTML).
  *   - Lead with the result, then how: "Cut build time **from 9 min to 2 min** by moving to Vite."
@@ -527,8 +535,11 @@ import type { Project } from "@/types/content";
 
 /**
  * Projects. Array order = display order.
- * Required: title, description. Optional: year, tech[], links{live,github}, image, featured.
- * featured: true → shown on Home.
+ * Required: title, description. Optional: year, tech[], links{github, youtube, live}, image, featured.
+ * links: every key optional → icon links (GitHub · YouTube · Live, always in that order). Omit a key rather than
+ *   leaving it "". The title links to live, else github, else youtube.
+ * featured: true → shown on Home (the first site.home.projectLimit), as a compact list row: title, year,
+ *   link icons and the description clamped to 2 lines.
  * description supports rich text: **bold** and [label](url) (same rules as experience highlights).
  */
 export const projects = [
@@ -537,12 +548,39 @@ export const projects = [
     description: "What it is and why it's interesting, in one or two sentences.",
     year: 2026,
     tech: ["React", "Node.js", "MongoDB"],
-    links: { live: "https://example.com", github: "https://github.com/you/project-one" },
+    links: {
+      github: "https://github.com/you/project-one",
+      youtube: "https://www.youtube.com/@you",
+      live: "https://example.com",
+    },
     image: "/projects/project-one.webp",
     featured: true,
   },
+  {
+    title: "Project Two",
+    description: "A second project with a **real outcome** up front, then how it was built.",
+    year: 2025,
+    tech: ["Next.js", "TypeScript"],
+    links: { github: "https://github.com/you/project-two", live: "https://example.org" },
+    featured: true,
+  },
+  {
+    title: "Project Three",
+    description: "A smaller tool or library; source only.",
+    year: 2024,
+    tech: ["Node.js"],
+    links: { github: "https://github.com/you/project-three" },
+  },
 ] satisfies Project[];
 ```
+
+The placeholder data covers every link combination the layout has to handle: Project One has all three links, Project Two has GitHub + Live, and Project Three has GitHub only (and isn't featured, so Home shows "View all projects →").
+
+**`src/lib/projectLinks.ts`** (pure helpers):
+- `PROJECT_LINK_TYPES = ["github", "youtube", "live"] as const`, the fixed display order;
+- `PROJECT_LINK_LABELS`: GitHub / YouTube / Live site;
+- `getProjectLink(project, type)`: the URL, with blank strings treated as missing;
+- `getTitleHref(project)`: live ?? github ?? youtube.
 
 ### 3.7 `src/data/skills.ts`
 
@@ -720,8 +758,9 @@ Checks:
 - unknown social platforms (`!isKnownPlatform`)
 - duplicate social URLs / duplicate project titles (would cause React key collisions)
 - project `image` / `site.avatar` start with `/` or `http`
+- every present `projects[].links.*` is non-empty (`links.youtube is empty (remove the key or add a URL)`)
 - `getDriveId(site.resume.driveUrl)` (from `lib/resume.ts`, §6.5) finds a file ID; otherwise warn that the Resume page will show "Resume coming soon."
-- `site.home.*Limit` ≥ 1
+- `site.home.experienceLimit` and `projectLimit` ≥ 1; `site.home.highlightLimit` ≥ 0
 
 **Phase 2 acceptance**
 - [ ] `pnpm build` passes; typing `platform: "` in `socials.ts` autocompletes known platforms.
@@ -1072,8 +1111,14 @@ Each block in `<Reveal step={n}>`:
    - if `site.avatar` is null, the image is omitted and the name/role block leads alone, flush with the content edge.
 2. **Bio** — `site.bio` paragraphs, each `<p><RichText text={paragraph} /></p>`, body scale, `mt-8 max-w-prose space-y-3` (the Reveal itself carries the classes).
 3. **Socials** — `mt-6`, `<SocialLinks className="-ml-2" />` (aligns icon glyphs with the text edge).
-4. **Experience** — `Section title="Experience"` with action `View all →` (`Link` to `/experience`, hidden if total ≤ limit; action links `shrink-0 text-sm font-medium text-muted transition-colors hover:text-fg` + focus ring). First `site.home.experienceLimit` of `sortExperience(experience)` as **`expandable`** `ExperienceItem`s (accordion, §6.2), `space-y-8`. All start closed; each opens independently.
-5. **Featured projects** — `featured` projects, max `site.home.projectLimit`, compact `ProjectCard` grid `grid gap-4 sm:grid-cols-2`, action `All projects →` (hidden when every project is already shown). Section hidden if none are featured.
+4. **Experience** — `Section title="Experience"` (no header action). First `site.home.experienceLimit` of `sortExperience(experience)` as **`preview`** `ExperienceItem`s (§6.2), laid out exactly like the Experience page: `divide-y divide-border`, each item wrapped in `py-8 first:pt-0 last:pb-0` (the same visible rhythm; `last:pb-0` lets the link or the next section set the gap below). Below the list, a `Link` to `/experience` reading **"View all experience →"**, shown **whenever there is any experience** (the section itself hides when there is none), because tech, links and the remaining highlights only live on that page. Action-link classes (`ACTION`, shared with "View all projects →"): `mt-8 inline-block text-sm font-medium text-muted transition-colors hover:text-fg` + focus ring.
+5. **Featured projects**: `Section title="Featured projects"` (no header action). It renders the first `site.home.projectLimit` (3) `featured` projects as a **list, not cards**, with the same rhythm as the Experience preview: `divide-y divide-border`, each row wrapped in `py-8 first:pt-0 last:pb-0`.
+   - **`ProjectRow`** (`src/components/projects/ProjectRow.tsx`) is an `<article>` holding:
+     - `ProjectHeader` (below);
+     - then the description, `<p className="mt-2 line-clamp-2 text-[15px] leading-relaxed text-muted"><RichText … /></p>`.
+   - The row has no image, tech chips or highlights.
+   - Below the list, **"View all projects →"** (`Link` to `/projects`, `ACTION` classes) appears **only when `projects.length` is greater than the number shown**.
+   - The section is hidden if no project is featured.
 6. **Skills** — `grid gap-x-6 gap-y-4 sm:grid-cols-[8rem_1fr]`: group label (`text-sm text-muted sm:pt-1`, centred on the first chip row) + chip list (`-mt-2 sm:mt-0 flex flex-wrap gap-2`, so a stacked label sits 8px above its chips on mobile).
 
 Reveal steps 0–5 in this order. Sections with no data (no jobs, no featured projects, no skills, empty bio) render nothing.
@@ -1083,14 +1128,16 @@ Reveal steps 0–5 in this order. Sections with no data (no jobs, no featured pr
 ```tsx
 type ExperienceItemProps = {
   item: Experience;
-  /** Home only: details collapse behind a chevron; duration hidden */
-  expandable?: boolean;
+  /** Home only: header + the first site.home.highlightLimit highlights; no tech, links or duration */
+  preview?: boolean;
   /** Company heading level: "h3" under a Section h2 (Home), "h2" on the Experience page (directly under the h1) */
   headingAs?: "h2" | "h3";
 };
 ```
 
-`expandable` replaces the old `compact` prop. Home passes `expandable`; the Experience page passes `headingAs="h2"` and shows everything with no toggle.
+Two modes, one design. The Experience page passes `headingAs="h2"` and shows everything. Home passes `preview` (the heading stays `h3` under the Section's h2). There is no expand/collapse anywhere: no chevron, no panel, no `useId`, no `inert`, no layout animation.
+
+In `preview` mode the item reads `site.home.highlightLimit` itself (typed as `Site["home"]` so the limit isn't narrowed to the literal) and renders `highlights.slice(0, max(0, limit))`.
 
 **`CompanyLogo`** (`src/components/experience/CompanyLogo.tsx`). Every item **always** shows a tile, so rows align whether or not a logo exists:
 
@@ -1128,90 +1175,63 @@ export function CompanyLogo({ company, logo }: CompanyLogoProps) {
         <{headingAs} class="flex flex-wrap items-center gap-2 text-base font-medium sm:text-lg">
           {url ? <a href={url} target="_blank" rel="noopener noreferrer" class="break-words … focus ring">{company}</a> : <span class="break-words">{company}</span>}
           {isCurrent(item) && <StatusBadge />}
-          {expandable && hasDetails && <ChevronButton />}
         </{headingAs}>
         <p class="text-[15px] text-muted">{[role, type].filter(Boolean).join(" · ")}</p>
       </div>
       <div class="shrink-0 text-sm text-muted tabular-nums sm:text-right">
-        <p>{formatRange(start, end)}{duration && <span class="hidden sm:inline"> · {duration}</span>}</p>   // duration = expandable ? "" : formatDuration(start, end) — "" (future start) → no stray "·"
+        <p>{formatRange(start, end)}{duration && <span class="hidden sm:inline"> · {duration}</span>}</p>   // duration = preview ? "" : formatDuration(start, end) — "" (future start) → no stray "·"
         {meta && <p>{meta}</p>}         // meta = [location, mode].filter(Boolean).join(" · ")
       </div>
     </div>
 
-    {expandable ? <Panel>{details}</Panel> : details}
+    {details}
   </div>
 </article>
 ```
 
-**Details** (`hasDetails` = any of `tech`, `highlights`, `links` is non-empty). Each block renders only if its data exists, and each has `mt-4`:
+**Details.** Each block renders only if its data exists, and each has `mt-4`:
 
-1. **Technologies & Tools:** label `<p className="text-sm font-medium text-muted">Technologies &amp; Tools</p>`, then `<ul className="mt-2 flex flex-wrap gap-2">` of `TechChip`s.
+1. **Technologies & Tools** (full mode only): label `<p className="text-sm font-medium text-muted">Technologies &amp; Tools</p>`, then `<ul className="mt-2 flex flex-wrap gap-2">` of `TechChip`s.
 2. **What I've done:** the same label style, then `<ul className="mt-2 space-y-2 text-[15px] leading-relaxed text-muted">` with `<li className="relative pl-4 before:absolute before:left-0 before:top-[0.7em] before:size-1 before:rounded-full before:bg-muted/60"><RichText text={h} /></li>`.
-3. **Links:** `<ul className="mt-4 flex flex-wrap gap-x-4 gap-y-2">` of `<li><ExternalLink href={url}>{label}</ExternalLink></li>`.
+3. **Links** (full mode only): `<ul className="mt-4 flex flex-wrap gap-x-4 gap-y-2">` of `<li><ExternalLink href={url}>{label}</ExternalLink></li>`.
 
-On the Experience page the details render directly under the title row. There's no `border-t`, because the list's `divide-y` already separates rows.
+The details render directly under the title row. There's no `border-t`, because the list's `divide-y` already separates rows.
 
-**Accordion (`expandable`, Home only).** Each item owns `const [open, setOpen] = useState(false)` and `const panelId = useId()`. All start closed and open independently. **No chevron and no panel when `hasDetails` is false.**
-
-- **Chevron button,** after the company and StatusBadge inside the heading:
-
-  ```tsx
-  <button
-    type="button"
-    aria-expanded={open}
-    aria-controls={panelId}
-    aria-label={`${open ? "Hide" : "Show"} details for ${company}`}
-    onClick={() => setOpen((o) => !o)}
-    className="-my-1.5 grid size-9 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-subtle hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg"
-  >
-    <LuChevronRight
-      aria-hidden
-      className={cn("size-4 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none", open && "rotate-90")}
-    />
-  </button>
-  ```
-
-  `size-9` is the 36px minimum tap target (CLAUDE.md). `-my-1.5` keeps it from making the title line taller.
-- **Panel:**
-
-  ```tsx
-  <div
-    id={panelId}
-    inert={!open}
-    className={cn(
-      "grid transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
-      open ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
-    )}
-  >
-    <div className="-mx-1 min-h-0 overflow-hidden px-1">
-      <div className={cn("pb-1 transition-opacity duration-300 motion-reduce:transition-none", open ? "opacity-100" : "opacity-0")}>
-        <div className="mt-4 border-t border-border">{details}</div>
-      </div>
-    </div>
-  </div>
-  ```
-
-  - `grid-template-rows` 0fr ↔ 1fr is the **only** layout animation allowed (CLAUDE.md, Animation rules).
-  - `inert` when closed removes the hidden links from the Tab order and the accessibility tree.
-  - `-mx-1 px-1` and `pb-1` stop `overflow-hidden` from clipping focus rings. Use horizontal padding only on the overflow box: vertical padding there would keep a closed panel a few pixels tall.
-  - Order inside the panel: `border-t` divider, then Technologies & Tools, then What I've done, then links.
+**Preview mode (Home only):** the same tile and title/date row (duration hidden), then the first N highlights as the **same bullet list**, `mt-4` directly under the header and **without the "What I've done" label** (it's the only block, so the label adds nothing). No tech chips, no links row. No highlights, or `highlightLimit: 0` → just the header.
 
 Missing optional fields must render nothing: no empty rows, no stray "·", no empty labels.
 
 ### 6.3 Experience (`/experience`)
 
 - `PageHeader` "Experience" + subtitle `` `${totalExperience(items)} of experience.` `` (`lib/dates.ts`, computed from the earliest start, never hard-coded; omitted when the list is empty). Description: `` `Work experience of ${site.name}, ${site.role}.` ``.
-- `sortExperience(experience)` → full `ExperienceItem`s (`headingAs="h2"`, not expandable) in `divide-y divide-border`, each `py-8 first:pt-0`. Every block shows, with its label; no chevrons.
+- `sortExperience(experience)` → full `ExperienceItem`s (`headingAs="h2"`) in `divide-y divide-border`, each `py-8 first:pt-0`. Every block shows, with its label. Home's preview list uses the same wrapper classes.
 
 ### 6.4 Projects (`/projects`)
 
 - `PageHeader` "Projects" + subtitle "Things I've built, with links to the live sites and source code." Description: `` `Projects by ${site.name}.` ``.
 - `grid gap-5 sm:grid-cols-2`, cards `headingAs="h2"`.
-- `ProjectCard` (`src/components/projects/ProjectCard.tsx`) props: `project`, `compact?` (hides the image, Home only), `headingAs?: "h2" | "h3"` (default `"h3"` under a Section h2 on Home; `"h2"` on the Projects page so headings don't skip, same as `ExperienceItem`):
+- **`ProjectLinks`** (`src/components/projects/ProjectLinks.tsx`), used on Home rows and Projects cards. Props: `project`, `className?`.
+  - **It renders only the links the project has,** packed together, in the fixed order GitHub (`FaGithub`) · YouTube (`FaYoutube`) · Live (`LuGlobe`). There are no placeholders and no shared slots.
+  - With no links it renders nothing, so the title block gets the full row width.
+  - The container is `ml-auto flex shrink-0 justify-end gap-1`. **The group sits flush right:** the last icon's 36px box always ends at the content's right edge. On Home that's the same x as the Experience date column; on a card it's the card's inner padding edge.
+  - **A link:** `<a>` with `grid size-9 place-items-center rounded-full text-muted transition-colors hover:bg-subtle hover:text-fg` plus the focus ring, `target="_blank" rel="noopener noreferrer"`, and `aria-label` and `title` like `"GitHub: Project One"` / `"Live site: Project One"`. The icon is `size-4 aria-hidden`.
+- **`ProjectHeader`** (`src/components/projects/ProjectHeader.tsx`) is the shared title row for `ProjectRow` and `ProjectCard`. Props: `project`, `headingAs?: "h2" | "h3"` (default `"h3"`).
+  - The row is `flex items-start justify-between gap-3`.
+  - **Left** is a `flex min-w-0 flex-wrap items-baseline gap-x-3` block. It holds the title heading (item-title scale, `min-w-0 break-words`) and the year (meta scale; it wraps below the title when space is short).
+    - The title links to `getTitleHref(project)` (`_blank`, `noopener noreferrer`, hover underline and focus ring).
+    - With no links, the title is plain text.
+  - **Right** is `<ProjectLinks className="-my-1.5 sm:-my-1" />`. The negative margins centre the 36px icons on the first title line (24px, or 28px from `sm`) without making the row taller.
+  - **The icons stay on the title row at 320px;** the title wraps beside them.
+- `ProjectCard` (`src/components/projects/ProjectCard.tsx`) props: `project` and `headingAs?: "h2" | "h3"` (`"h2"` on the Projects page, so headings don't skip, same as `ExperienceItem`). The old `compact` variant is removed (Home uses `ProjectRow`).
   - `article.group flex flex-col overflow-hidden rounded-lg border border-border transition-colors hover:border-fg/20`
   - Image (optional): wrapper `overflow-hidden bg-subtle aspect-video`; `img` `size-full object-cover transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.02] motion-reduce:transition-none`, `width={1280} height={720} loading="lazy" decoding="async"`, `alt={title}`.
-  - Body `flex flex-1 flex-col p-4 sm:p-5`: title + year row (`flex items-baseline justify-between gap-3`; title `min-w-0 break-words`, item-title scale; year meta scale `shrink-0`), description `mt-2` (body scale, `<p><RichText text={description} /></p>`, §5.8), tech chips `mt-4 flex flex-wrap gap-2`, then links `mt-auto pt-4 flex flex-wrap gap-4` → `ExternalLink` "Live" / "Source" only if present, with `aria-label` `` `Live: ${title}` `` / `` `Source: ${title}` `` so repeated links are distinguishable (visible text first, so label-in-name holds).
-  - No whole-card anchor (avoids nested links). Title links to `live ?? github` when available (`_blank`, `noopener noreferrer`, hover underline + focus ring).
+  - Body `flex flex-1 flex-col p-4 sm:p-5`:
+    - `ProjectHeader` (title + year on the left, `ProjectLinks` on the right);
+    - the description `mt-2` (body scale, `<p><RichText text={description} /></p>`, §5.8);
+    - tech chips `mt-4 flex flex-wrap gap-2`.
+
+    The text "Live" / "Source" links are gone, replaced by the icon links in the title row.
+  - No whole-card anchor (avoids nested links). The title links via `getTitleHref` (live ?? github ?? youtube).
   - Placeholder `public/projects/project-one.webp` (neutral 1280×720 grey) exists so the sample data doesn't 404; the owner replaces it.
 
 ### 6.5 Resume (`/resume`)
@@ -1276,7 +1296,7 @@ Page (`const links = getResumeLinks(site.resume.driveUrl)`):
 - [ ] One `<h1>` per page; heading levels don't skip.
 - [ ] `<title>` updates on every route (check the tab).
 - [ ] Removing any optional field from any item leaves no gaps or stray separators.
-- [ ] 1 job / 0 featured projects → sections hide or adapt gracefully (no empty headings, no "View all" when nothing more).
+- [ ] 1 job / 0 featured projects → sections hide or adapt gracefully (no empty headings, no "View all projects" when nothing more; "View all experience" shows whenever there's any experience).
 - [ ] Very long company name / role / email / URL wraps without overflow at 320px.
 - [ ] Experience rows align: logo tiles and letter tiles are the same size, and every text block shares the content column's left edge.
 - [ ] Rich text renders `**bold**` and `[label](url)` only; broken markers show as plain text.
@@ -1297,11 +1317,9 @@ Allowed motion (nothing else):
 | Theme toggle | sun/moon crossfade + rotate | `transition-[opacity,transform] duration-300` |
 | Copy email | copy ↔ check icon crossfade, 200ms | `transition-[opacity,transform] duration-200` |
 | Current job | pinging dot | `animate-ping`, hidden under reduced motion |
-| Home experience accordion | panel opens/closes, 300ms | `transition-[grid-template-rows]` 0fr ↔ 1fr + content `transition-opacity` (§6.2) |
-| Accordion chevron | rotates 90°, 300ms | `transition-transform` |
 | Theme switch (optional Step 19) | dawn/dusk clip reveal, 650ms | View Transitions API (§7.1) |
 
-Durations: 150–200ms hover/press, 300ms state toggles (theme icon, accordion, chevron), 400–600ms enter, 650ms for the Step 19 theme transition. No `transition-all`, no scroll listeners, everything off with reduced motion. **No layout-property animation, with one exception:** the Home accordion's `grid-template-rows`. Don't set `scroll-behavior: smooth` globally (fights ScrollRestoration).
+Durations: 150–200ms hover/press, 300ms state toggles (theme icon), 400–600ms enter, 650ms for the Step 19 theme transition. No `transition-all`, no scroll listeners, everything off with reduced motion. **No layout-property animation anywhere** (no width/height/`grid-template-rows`/top/left). Don't set `scroll-behavior: smooth` globally (fights ScrollRestoration).
 
 Polish: consistent focus rings; inverted `::selection`; SVG favicon monogram that reads on light and dark tabs (use a `prefers-color-scheme` media query inside the SVG).
 
@@ -1407,10 +1425,11 @@ At **320, 375, 414, 768, 1024, 1440, 1920px**, light and dark:
 - [ ] Dates stack under titles on mobile, right-aligned on `sm+`.
 - [ ] Chips, socials, buttons wrap cleanly.
 - [ ] Project grid: 1 column < 640px, 2 columns ≥ 640px; cards in a row align.
+- [ ] Project link icons: only the links a project has, packed in the order GitHub · YouTube · Live, flush right, so the last icon ends at the content's right edge (on Home, aligned with the Experience date column); no empty placeholders; a project with no links gets a full-width title row.
 - [ ] Resume: Drive preview iframe at every width without overflow (capped at `85dvh`); buttons wrap.
-- [ ] Tap targets ≥ 36px (social icons, theme toggle, accordion chevron); no hover-only information.
+- [ ] Tap targets ≥ 36px (social icons, theme toggle); no hover-only information.
 - [ ] Experience: logo and letter tiles the same size at every width; title row, labels, chips, bullets and links share the content column's left edge.
-- [ ] Home accordion: Enter/Space toggles; `aria-expanded` and the aria-label update; a closed panel's links aren't reachable with Tab (`inert`); focus rings inside an open panel aren't clipped; reduced motion → opens instantly.
+- [ ] Home shows the first N highlights (`site.home.highlightLimit`), matching the Experience page style (same tiles, title/date rows, bullets, `divide-y` spacing); "View all experience →" is always shown when there's experience.
 - [ ] Rich-text links: visible focus; external ones open in a new tab; `/path` ones navigate client-side.
 - [ ] iOS Safari: no white flash, sticky header OK, `dvh` correct with toolbar.
 - [ ] Keyboard: skip link, full Tab order, focus always visible.
@@ -1442,9 +1461,11 @@ Add `public/robots.txt` and a static `public/sitemap.xml` with the 4 routes.
 Add a job          → src/data/experience.ts   append { company, role, start: "YYYY-MM", end: null | "YYYY-MM", … }
 Company logo       → public/logos/name.svg     then logo: "/logos/name.svg" on the job (square .svg/.webp; omit → letter tile)
 Links under a job  → src/data/experience.ts   links: [{ label: "Case study", url: "https://…" }]
+Highlights order   → src/data/experience.ts   order by importance; the first N (site.home.highlightLimit) appear on Home
 Bold / links       → bio, highlights, project descriptions: **bold** and [label](url) only.
                      Lead with the result; at most ONE bold metric/outcome per bullet; real numbers only.
 Add a project      → src/data/projects.ts     append { title, description, tech, links, featured }
+Project links      → src/data/projects.ts     links: { github?, youtube?, live? } (all optional; omit a key instead of "")
 Add/remove social  → src/data/socials.ts      add/remove { platform: "leetcode", url }
 Add a skill        → src/data/skills.ts       add "Name" to a group
 Update resume      → upload a new version in Google Drive via Manage versions; the link stays the same (bump site.resume.updated)
@@ -1462,7 +1483,7 @@ New icon support   → src/lib/icons.ts         one line in SOCIAL_ICONS or TECH
 2. [ ] Phase 2 — types, data files, `dates.ts`, `icons.ts`, `validate.ts`
 3. [ ] Phase 3 — router, `main.tsx`, RootLayout, Container, Header, ThemeToggle, Footer, SocialLinks
 4. [ ] Phase 4 — Section, PageHeader, Reveal, TechChip, StatusBadge, ExternalLink, CopyEmail, RichText
-5. [ ] Phase 5 — Home, Experience (ExperienceItem, CompanyLogo, accordion), Projects, Resume, NotFound (+ titles/meta)
+5. [ ] Phase 5 — Home, Experience (ExperienceItem full + preview, CompanyLogo), Projects, Resume, NotFound (+ titles/meta)
 6. [ ] Phase 6 — motion + polish
 7. [ ] Phase 7 — performance pass
 8. [ ] Phase 8 — responsive / a11y QA

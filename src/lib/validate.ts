@@ -63,10 +63,13 @@ export function validateContent(): void {
     problems.push(`projects: duplicate title "${title}" (React key collision)`),
   );
 
-  work.forEach(({ title, image }, i) => {
+  work.forEach(({ title, image, links: projectLinks }, i) => {
     if (image !== undefined && !isPath(image)) {
       problems.push(`projects[${i}] (${title}): image "${image}" must start with "/" or "http"`);
     }
+    Object.entries(projectLinks ?? {}).forEach(([type, url]) => {
+      if (url.trim() === "") problems.push(`projects[${i}] (${title}): links.${type} is empty (remove the key or add a URL)`);
+    });
   });
   if (s.avatar !== null && !isPath(s.avatar)) {
     problems.push(`site.avatar "${s.avatar}" must start with "/" or "http" (or be null)`);
@@ -81,6 +84,9 @@ export function validateContent(): void {
   (["experienceLimit", "projectLimit"] as const).forEach((key) => {
     if (s.home[key] < 1) problems.push(`site.home.${key} is ${s.home[key]}; must be ≥ 1`);
   });
+  if (s.home.highlightLimit < 0) {
+    problems.push(`site.home.highlightLimit is ${s.home.highlightLimit}; must be ≥ 0`);
+  }
 
   if (problems.length === 0) return;
   console.warn(

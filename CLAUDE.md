@@ -70,14 +70,14 @@ pnpm add -D <pkg>   # dev dep
 src/
   data/          # ← ALL editable content: site, navigation, socials, experience, projects, skills
   types/         # content.ts — shared content types
-  lib/           # pure helpers: dates.ts, icons.ts, cn.ts, theme.ts, validate.ts, resume.ts, richText.ts
+  lib/           # pure helpers: dates.ts, icons.ts, cn.ts, theme.ts, validate.ts, resume.ts, richText.ts, projectLinks.ts
   hooks/         # useCopyToClipboard.ts
   context/       # ThemeContext.tsx
   components/
     layout/      # RootLayout, Header, Footer, Container
     ui/          # ThemeToggle, SocialLinks, TechChip, Section, StatusBadge, ExternalLink, CopyEmail, Reveal, PageHeader, RichText
     experience/  # ExperienceItem, CompanyLogo
-    projects/    # ProjectCard
+    projects/    # ProjectCard, ProjectRow, ProjectHeader, ProjectLinks
   pages/         # Home, Experience, Projects, Resume, NotFound
   router.tsx
   main.tsx
@@ -134,9 +134,8 @@ public/          # avatar.webp, favicon.svg, og.png, robots.txt, logos/ (company
 
 ## Animation rules (strict)
 
-- Animate only `opacity` and `transform`. Never width/height/top/left/box-shadow/filter on large areas.
-  - **Single exception:** the Home experience accordion animates `grid-template-rows` (`grid-rows-[0fr]` ↔ `grid-rows-[1fr]`). Nowhere else may layout be animated.
-- Durations: 150–200ms hover/press, **300ms state toggles** (theme icon swap, accordion open/close, chevron rotation), 400–600ms enter. Easing `cubic-bezier(0.22, 1, 0.36, 1)`.
+- Animate only `opacity` and `transform`. Never width/height/top/left/box-shadow/filter on large areas. **No layout animation anywhere** (including `grid-template-rows`).
+- Durations: 150–200ms hover/press, **300ms state toggles** (theme icon swap; the copy ↔ check icon crossfade is 200ms, IMPLEMENTATION.md §7), 400–600ms enter. Easing `cubic-bezier(0.22, 1, 0.36, 1)`.
 - Enter animations: `animate-fade-up` via `<Reveal step={n}>`, stagger ≤ 6 steps × 60ms. On mount only — no scroll-triggered reveals.
 - Every animation disabled under `prefers-reduced-motion` (`motion-reduce:animate-none`, global CSS guard).
 - Never `transition-all`. Use `transition-colors`, `transition-opacity`, `transition-transform`, or explicit `transition-[opacity,transform]`.
@@ -157,9 +156,11 @@ public/          # avatar.webp, favicon.svg, og.png, robots.txt, logos/ (company
 |---|---|---|
 | Add a job | `src/data/experience.ts` | Append an object. `end: null` = current job → "Working" badge + "Present". Order doesn't matter (auto-sorted). |
 | Company logo | `public/logos/` + `src/data/experience.ts` | Put a square `.svg`/`.webp` in `public/logos/`, set `logo: "/logos/name.svg"`. No logo → letter tile. |
-| Links under a job | `src/data/experience.ts` | `links: [{ label: "Case study", url: "https://…" }]`. Shown after the bullets. |
+| Links under a job | `src/data/experience.ts` | `links: [{ label: "Case study", url: "https://…" }]`. Shown after the bullets (Experience page only). |
+| Highlights on Home | `src/data/experience.ts` + `src/data/site.ts` | Order highlights by importance; the first N (`site.home.highlightLimit`) appear on Home. |
 | Bold / links in text | bio, highlights, project descriptions | `**bold**` and `[label](url)` only. Lead with the result; at most **one** bold metric/outcome per bullet; not every bullet needs one; real numbers only. |
-| Add a project | `src/data/projects.ts` | Append an object. `featured: true` shows it on Home. |
+| Add a project | `src/data/projects.ts` | Append an object. `featured: true` shows it on Home (first `site.home.projectLimit`). |
+| Project links | `src/data/projects.ts` | `links: { github?, youtube?, live? }`, all optional; shown as icons in that order. Omit a key rather than leaving `""`. |
 | Add/remove a social | `src/data/socials.ts` | Add/remove `{ platform, url }`. Icon picked from `platform` (autocompletes). Unknown platform → generic link icon. |
 | Add a skill | `src/data/skills.ts` | Add a string like `"Next.js"` to a group. Known names get an icon; unknown → text-only chip. |
 | Name/bio/email | `src/data/site.ts` | Edit fields. |

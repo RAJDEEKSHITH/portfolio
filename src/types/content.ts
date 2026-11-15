@@ -15,7 +15,8 @@ export type Site = {
   url: string;
   /** driveUrl: Google Drive share link ("Anyone with the link"); preview/view/download URLs are derived in lib/resume.ts */
   resume: { driveUrl: string; updated: YearMonth };
-  home: { experienceLimit: number; projectLimit: number };
+  /** highlightLimit: how many highlights per job the Home preview shows (0 = header only) */
+  home: { experienceLimit: number; projectLimit: number; highlightLimit: number };
 };
 
 export type NavItem = { label: string; to: string };
@@ -44,11 +45,15 @@ export type Experience = {
   /** square logo in /public/logos, .svg or .webp, e.g. "/logos/acme.svg". No logo → monogram tile */
   logo?: string;
   tech?: string[];
-  /** Rich text: **bold** and [label](url) */
+  /** Rich text: **bold** and [label](url). Ordered by importance: Home shows the first site.home.highlightLimit */
   highlights?: string[];
-  /** Shown after the highlights (inside the expandable panel on Home) */
+  /** Shown after the highlights (Experience page only) */
   links?: ExperienceLink[];
 };
+
+/** All optional. Shown as icon links in a fixed order: GitHub · YouTube · Live (components/projects/ProjectLinks) */
+export type ProjectLinkUrls = { github?: string; youtube?: string; live?: string };
+export type ProjectLinkType = keyof ProjectLinkUrls;
 
 export type Project = {
   title: string;
@@ -56,7 +61,7 @@ export type Project = {
   description: string;
   year?: number;
   tech?: string[];
-  links?: { live?: string; github?: string };
+  links?: ProjectLinkUrls;
   /** path in /public, 16:9 webp, e.g. 1280×720 */
   image?: string;
   featured?: boolean;
