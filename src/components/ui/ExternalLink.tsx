@@ -20,7 +20,7 @@ export function ExternalLink({ href, className, children, ...props }: ExternalLi
       {children}
       <LuArrowUpRight
         aria-hidden
-        className="size-3.5 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+        className="size-3.5 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 motion-reduce:group-hover:translate-none"
       />
     </a>
   );

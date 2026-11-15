@@ -138,6 +138,9 @@ No `baseUrl`: TypeScript 6 rejects it (TS5101), and `paths` alone resolves relat
   --font-sans: "Hanken Grotesk Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, SFMono-Regular, monospace;
 
+  /* every transition-* utility uses the house easing unless it sets its own ease-* */
+  --default-transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+
   --animate-fade-up: fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-fade-in: fade-in 0.4s ease-out both;
 
@@ -1224,7 +1227,7 @@ Missing optional fields must render nothing: no empty rows, no stray "·", no em
   - **The icons stay on the title row at 320px;** the title wraps beside them.
 - `ProjectCard` (`src/components/projects/ProjectCard.tsx`) props: `project` and `headingAs?: "h2" | "h3"` (`"h2"` on the Projects page, so headings don't skip, same as `ExperienceItem`). The old `compact` variant is removed (Home uses `ProjectRow`).
   - `article.group flex flex-col overflow-hidden rounded-lg border border-border transition-colors hover:border-fg/20`
-  - Image (optional): wrapper `overflow-hidden bg-subtle aspect-video`; `img` `size-full object-cover transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.02] motion-reduce:transition-none`, `width={1280} height={720} loading="lazy" decoding="async"`, `alt={title}`.
+  - Image (optional): wrapper `overflow-hidden bg-subtle aspect-video`; `img` `size-full object-cover transition-transform duration-500 group-hover:scale-[1.02] motion-reduce:group-hover:scale-none` (the easing comes from the default token, §2.4), `width={1280} height={720} loading="lazy" decoding="async"`, `alt={title}`.
   - Body `flex flex-1 flex-col p-4 sm:p-5`:
     - `ProjectHeader` (title + year on the left, `ProjectLinks` on the right);
     - the description `mt-2` (body scale, `<p><RichText text={description} /></p>`, §5.8);
@@ -1311,17 +1314,22 @@ Allowed motion (nothing else):
 |---|---|---|
 | Route change | content fades in 0.4s | keyed wrapper `animate-fade-in` |
 | Page load | sections rise 8px + fade, 60ms stagger | `<Reveal step>` |
-| Links / icons | color 150ms | `transition-colors` |
-| Arrow links | arrow nudges ↗ 2px | `group-hover:translate-*` |
-| Project image | scale 1.02 over 500ms | `transition-transform` |
+| Links / icons / buttons / card border | color 150ms | `transition-colors` |
+| Resume primary button | opacity to 90% on hover, 150ms | `transition-opacity` (§6.5) |
+| Arrow links | arrow nudges ↗ 2px, 200ms | `group-hover:translate-*`; `motion-reduce:group-hover:translate-none` |
+| Project image | scale 1.02 over 500ms | `transition-transform`; `motion-reduce:group-hover:scale-none` |
 | Theme toggle | sun/moon crossfade + rotate | `transition-[opacity,transform] duration-300` |
 | Copy email | copy ↔ check icon crossfade, 200ms | `transition-[opacity,transform] duration-200` |
 | Current job | pinging dot | `animate-ping`, hidden under reduced motion |
 | Theme switch (optional Step 19) | dawn/dusk clip reveal, 650ms | View Transitions API (§7.1) |
 
-Durations: 150–200ms hover/press, 300ms state toggles (theme icon), 400–600ms enter, 650ms for the Step 19 theme transition. No `transition-all`, no scroll listeners, everything off with reduced motion. **No layout-property animation anywhere** (no width/height/`grid-template-rows`/top/left). Don't set `scroll-behavior: smooth` globally (fights ScrollRestoration).
+Durations: 150–200ms hover/press, 300ms state toggles (theme icon), 400–600ms enter, 650ms for the Step 19 theme transition. **Easing:** `cubic-bezier(0.22, 1, 0.36, 1)` everywhere, set once as `--default-transition-timing-function` in `@theme` (§2.4), so `transition-*` utilities don't need an `ease-*` class. The keyframe animations keep their own easing (`fade-up` the house curve, `fade-in` `ease-out`, `animate-ping` Tailwind's). **Reduced motion:** the global guard in `index.css` cuts every transition/animation to 0.01ms; `Reveal` and the route wrapper add `motion-reduce:animate-none`, the ping is `motion-reduce:hidden`, and the two hover transforms (arrow nudge, image scale) are switched off with `motion-reduce:group-hover:*-none`, so they don't snap. No `transition-all`, no scroll listeners, everything off with reduced motion. **No layout-property animation anywhere** (no width/height/`grid-template-rows`/top/left). Don't set `scroll-behavior: smooth` globally (fights ScrollRestoration).
 
 Polish: consistent focus rings; inverted `::selection`; SVG favicon monogram that reads on light and dark tabs (use a `prefers-color-scheme` media query inside the SVG).
+
+- **Favicon** (`public/favicon.svg`, done in Step 14): a 32×32 `rx=7` tile with one centred letter (`text-anchor="middle" dominant-baseline="central"`, system sans, 600 weight, size 20). Light scheme: tile `#18181b`, letter `#fafafa`; dark scheme (`@media (prefers-color-scheme: dark)` in the SVG's `<style>`): tile `#fafafa`, letter `#0a0a0a`. It follows the **browser/OS** scheme, not the site toggle. The placeholder letter is "Y" (from "Your Name"); the owner edits it by hand, like the static text in `index.html`.
+- **Focus rings:** `focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg` on every link, button and the skip link. On `text-muted` controls with `transition-colors`, the ring's colour fades in from `currentColor` to `fg` over 150ms (Tailwind's `transition-colors` includes `outline-color`); that's accepted.
+- **`::selection`:** `bg-fg text-bg` (inverted in both themes).
 
 ### 7.1 Dawn/dusk theme transition — OPTIONAL, Step 19, branch `feat/theme-transition`
 
@@ -1471,6 +1479,7 @@ Add a skill        → src/data/skills.ts       add "Name" to a group
 Update resume      → upload a new version in Google Drive via Manage versions; the link stays the same (bump site.resume.updated)
 Bio / email / name → src/data/site.ts
 New icon support   → src/lib/icons.ts         one line in SOCIAL_ICONS or TECH_ICONS
+Favicon letter     → public/favicon.svg       change the letter inside <text>…</text> to your initial
 ```
 
 ---

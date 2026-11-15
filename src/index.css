@@ -43,6 +43,9 @@
   --font-sans: "Hanken Grotesk Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, SFMono-Regular, monospace;
 
+  /* every transition-* utility uses the house easing unless it sets its own ease-* */
+  --default-transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+
   --animate-fade-up: fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-fade-in: fade-in 0.4s ease-out both;
 

@@ -25,7 +25,7 @@ export function ProjectCard({ project, headingAs = "h3" }: ProjectCardProps) {
             height={720}
             loading="lazy"
             decoding="async"
-            className="size-full object-cover transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.02] motion-reduce:transition-none"
+            className="size-full object-cover transition-transform duration-500 group-hover:scale-[1.02] motion-reduce:group-hover:scale-none"
           />
         </div>
       )}

@@ -135,7 +135,7 @@ public/          # avatar.webp, favicon.svg, og.png, robots.txt, logos/ (company
 ## Animation rules (strict)
 
 - Animate only `opacity` and `transform`. Never width/height/top/left/box-shadow/filter on large areas. **No layout animation anywhere** (including `grid-template-rows`).
-- Durations: 150–200ms hover/press, **300ms state toggles** (theme icon swap; the copy ↔ check icon crossfade is 200ms, IMPLEMENTATION.md §7), 400–600ms enter. Easing `cubic-bezier(0.22, 1, 0.36, 1)`.
+- Durations: 150–200ms hover/press, **300ms state toggles** (theme icon swap; the copy ↔ check icon crossfade is 200ms, IMPLEMENTATION.md §7), 400–600ms enter. Easing `cubic-bezier(0.22, 1, 0.36, 1)` (the `--default-transition-timing-function` token in `index.css`, so don't add `ease-*` to transitions).
 - Enter animations: `animate-fade-up` via `<Reveal step={n}>`, stagger ≤ 6 steps × 60ms. On mount only — no scroll-triggered reveals.
 - Every animation disabled under `prefers-reduced-motion` (`motion-reduce:animate-none`, global CSS guard).
 - Never `transition-all`. Use `transition-colors`, `transition-opacity`, `transition-transform`, or explicit `transition-[opacity,transform]`.
@@ -167,6 +167,7 @@ public/          # avatar.webp, favicon.svg, og.png, robots.txt, logos/ (company
 | Update resume | Google Drive + `src/data/site.ts` | Upload a new version of the same Drive file (Manage versions); the link stays the same. Bump `site.resume.updated`. New file → paste its share link into `site.resume.driveUrl`. |
 | Nav items | `src/data/navigation.ts` | Edit array. |
 | Support a new icon | `src/lib/icons.ts` | Add one entry to `SOCIAL_ICONS` or `TECH_ICONS`. |
+| Favicon letter | `public/favicon.svg` | Change the letter inside `<text>…</text>` to your initial. |
 
 If you change a data shape, update `src/types/content.ts`, the comment header in the data file, and `IMPLEMENTATION.md` §3.
 
