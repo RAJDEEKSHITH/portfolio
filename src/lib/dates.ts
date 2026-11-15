@@ -46,3 +46,10 @@ export const sortExperience = <T extends Experience>(list: readonly T[]): T[] =>
     if (isCurrent(a) !== isCurrent(b)) return isCurrent(a) ? -1 : 1;
     return toIndex(parse(b.start)) - toIndex(parse(a.start));
   });
+
+/** Time since the earliest start, e.g. "1 yr 2 mos". Empty list → "". */
+export const totalExperience = (list: readonly Pick<Experience, "start">[]): string => {
+  if (list.length === 0) return "";
+  const earliest = list.reduce((min, e) => (toIndex(parse(e.start)) < toIndex(parse(min)) ? e.start : min), list[0].start);
+  return formatDuration(earliest, null);
+};

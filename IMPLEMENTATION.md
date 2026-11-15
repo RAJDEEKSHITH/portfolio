@@ -613,6 +613,13 @@ export const sortExperience = <T extends Experience>(list: readonly T[]): T[] =>
     if (isCurrent(a) !== isCurrent(b)) return isCurrent(a) ? -1 : 1;
     return toIndex(parse(b.start)) - toIndex(parse(a.start));
   });
+
+/** Time since the earliest start, e.g. "1 yr 2 mos". Empty list → "". */
+export const totalExperience = (list: readonly Pick<Experience, "start">[]): string => {
+  if (list.length === 0) return "";
+  const earliest = list.reduce((min, e) => (toIndex(parse(e.start)) < toIndex(parse(min)) ? e.start : min), list[0].start);
+  return formatDuration(earliest, null);
+};
 ```
 
 ### 3.9 `src/lib/icons.ts`
@@ -1121,7 +1128,7 @@ export function CompanyLogo({ company, logo }: CompanyLogoProps) {
         <p class="text-[15px] text-muted">{[role, type].filter(Boolean).join(" · ")}</p>
       </div>
       <div class="shrink-0 text-sm text-muted tabular-nums sm:text-right">
-        <p>{formatRange(start, end)}{!expandable && <span class="hidden sm:inline"> · {formatDuration(start, end)}</span>}</p>
+        <p>{formatRange(start, end)}{duration && <span class="hidden sm:inline"> · {duration}</span>}</p>   // duration = expandable ? "" : formatDuration(start, end) — "" (future start) → no stray "·"
         {meta && <p>{meta}</p>}         // meta = [location, mode].filter(Boolean).join(" · ")
       </div>
     </div>
@@ -1188,7 +1195,7 @@ Missing optional fields must render nothing: no empty rows, no stray "·", no em
 
 ### 6.3 Experience (`/experience`)
 
-- `PageHeader` "Experience" + subtitle (e.g. total experience computed from the earliest start — computed, never hard-coded).
+- `PageHeader` "Experience" + subtitle `` `${totalExperience(items)} of experience.` `` (`lib/dates.ts`, computed from the earliest start, never hard-coded; omitted when the list is empty). Description: `` `Work experience of ${site.name}, ${site.role}.` ``.
 - `sortExperience(experience)` → full `ExperienceItem`s (`headingAs="h2"`, not expandable) in `divide-y divide-border`, each `py-8 first:pt-0`. Every block shows, with its label; no chevrons.
 
 ### 6.4 Projects (`/projects`)

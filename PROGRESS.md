@@ -10,116 +10,62 @@ Each step lists the `IMPLEMENTATION.md` sections to read. Read only those.
 
 _Overwrite this section at the end of every step._
 
-- **Last completed step:** Step 9 — Shared UI primitives, followed by a **consolidation pass**: docs synced with owner decisions A–I, plus a code audit. No new step was started; Step 10 is next.
-- **Docs changed in the consolidation pass:**
-  - **CLAUDE.md:**
-    - **Architecture:** `ui/RichText`, `experience/CompanyLogo`, `lib/richText.ts` and `public/logos/` added, plus a RichText rule (never `dangerouslySetInnerHTML`, never auto-bold).
-    - **Tokens:** `bg-logo` added to the token list.
-    - **Animation rules:**
-      - the single layout exception (accordion `grid-template-rows`);
-      - a 300ms state-toggle duration;
-      - View Transitions allowed only for Step 19, once merged.
-    - **Owner table:** company logo, links under a job, bold/links writing guidance, and an "Update resume" row. Name/bio/email are split from resume.
-    - **Definition of done #7:** initial JS ≤ 140 KB gzip, hard cap.
-    - **Checked and unchanged:** the "Plugins, skills & MCP servers" section and the never-commit rule.
-  - **IMPLEMENTATION.md:**
-    - **§1:** new rows for formatted text, company logos, the Home accordion and the bundle cap.
-    - **§2–§4, catching up with the code:**
-      - §2.3: no `baseUrl`, explicit `strict`;
-      - §2.4: `@source not` and the `--logo` token;
-      - §2.5: avatar preload commented out;
-      - §4.1: `HydrateFallback` and `import type { ComponentType }`;
-      - §4.3: skip-link focus ring;
-      - §4.6: toggle `shrink-0`.
-    - **§3:**
-      - §3.1 types: `ExperienceLink`, `logo?`, `links?`, rich-text notes;
-      - §3.2, §3.5, §3.6: data headers and the new placeholder data;
-      - §3.10: two new validator checks, plus a Phase 2 acceptance item.
-    - **§4.5 and §4.7:** "Step 16" notes for the nav scroll-into-view and the footer hairline.
-    - **§5:** §5.2 PageHeader, §5.4 TechChip lint-safe code, §5.5 `StatusBadgeProps`, §5.6 ExternalLink and §5.7 CopyEmail as built. **New §5.8 RichText.**
-    - **§6:**
-      - §6.1: Home bio uses RichText; the experience list uses `expandable` items with `space-y-8`, replacing `space-y-6`, which broke CLAUDE.md's spacing rule;
-      - **§6.2, rewritten:** `CompanyLogo`, the `[tile][content]` layout, labelled detail blocks, the links row, the accordion, and `expandable`/`headingAs` replacing `compact`;
-      - §6.3: Experience page uses `headingAs="h2"`, labelled blocks and no `border-t`;
-      - §6.4: RichText descriptions;
-      - §6.5: border and `overflow-hidden` move onto the iframe wrapper.
-    - **§7:** motion table plus durations line. **New §7.1, the dawn/dusk Step 19 spec.**
-    - **§8:** 140 KB hard cap; if it's exceeded, code-split.
-    - **§9:** new QA boxes for tap targets, tiles, accordion and rich-text links.
-    - **§11:** quick-reference lines.
-    - **§12:** RichText, CompanyLogo and the optional phase; "resume PDF" becomes "Drive link"; "View Transitions" comes off the Future list.
-  - **PROGRESS.md:**
-    - Step 9 now includes RichText.
-    - New "Done when" items in **Steps 10, 11, 12, 13, 14, 15 and 16** (see below).
-    - **New Step 19** (optional, on its own branch).
-    - **New "Ideas / later" section** at the bottom.
-- **Code changed in the consolidation pass:**
-  - `src/index.css`: `--logo` (`#ffffff` light, `#f4f4f5` dark) and `--color-logo`.
-  - `src/types/content.ts`: `ExperienceLink`, `Experience.logo?`, `Experience.links?`, and rich-text doc comments on `bio`, `highlights` and `description`.
-  - **`src/data/experience.ts`, new header with the writing guidance:**
-    - Company A has a logo, one **bold** metric, an inline `[link](url)`, a plain bullet and `links`;
-    - Company B has none of them.
-  - Data headers: `projects.ts` and `site.ts` mention rich text.
-  - **New `public/logos/company-a.svg`:** a neutral placeholder, so Step 10 won't 404.
-  - **`src/lib/validate.ts`** warns when:
-    - `logo` doesn't match `/^\/logos\/[^/]+\.(svg|webp)$/`;
-    - a `links[].url` is empty.
-  - **New `src/lib/richText.ts`** (pure tokenizer: `parseRichText`, `getLinkKind`) and **`src/components/ui/RichText.tsx`**.
-  - The temporary Step 9 preview on Home also shows a "Rich text" section. **Step 12 replaces the whole preview.**
-- **Which steps decisions A–I belong to:**
-  - **Built now** (their steps are ticked): the token, types, data, validator and RichText.
-  - **Docs only** (their steps aren't done yet): CompanyLogo, ExperienceItem and the accordion (Steps 10 and 12), the Resume wrapper (Step 13), Step 16's notes, and Step 19.
-  - **Already present, verified:**
-    - decision A (Drive resume, `getResumeLinks`, the "coming soon" warning);
-    - decision F (36px socials, 320px nav fallback);
-    - decision G (Step 16 notes).
-- **Audit results:**
-  - **Spec vs code:** a script compared every full code block in IMPLEMENTATION.md with its source file, ignoring whitespace and comments. That covers 25 files: `index.css`, `index.html`, theme, context, cn, types, all 6 data files, dates, icons, router, main, RootLayout, Container, Footer, SocialLinks, Section, Reveal, TechChip, StatusBadge and resume. **All match.** The only two differences were the spec lagging behind the code (router's `ComponentType` import, StatusBadge's props type), and the spec was fixed. The code was right per CLAUDE.md. Prose-only sections (Header §4.5, ThemeToggle §4.6, PageHeader §5.2, ExternalLink §5.6, CopyEmail §5.7) were checked by hand and match.
-  - **Greps, all clean:**
-    - raw palette classes and arbitrary colours: none;
-    - `transition-all`: none;
-    - `dangerouslySetInnerHTML`: none;
-    - `package-lock.json`, `yarn.lock`, `npm-shrinkwrap.json`: none (`pnpm-lock.yaml` only);
-    - `resume.pdf`: none, repo-wide;
-    - `tailwind.config.*`: none;
-    - forbidden dependencies: none;
-    - `forwardRef`, `.Provider`, `any`, `@ts-ignore`, `enum`, `useContext`: none;
-    - `document.title`, `min-h-screen`: none;
-    - `_blank` without `noopener noreferrer`: none.
-  - **Tokenizer:** 18/18 cases pass under Node type-stripping. They cover:
-    - plain text, bold and two bolds;
-    - external, internal and mailto links;
-    - `javascript:` → text;
-    - `//host` → text;
-    - `data:` → text;
-    - unclosed `**`;
-    - `** spaced **`;
-    - `****`;
-    - empty label;
-    - unclosed `(`;
-    - a space in the URL;
-    - literal HTML;
-    - an empty string.
-  - **Headless Chrome against dev:**
-    - RichText renders one `<strong class="font-medium text-fg">`;
-    - the external link gets `_blank` and `noopener noreferrer`;
-    - `/projects` is a client-side `Link` (navigation without a reload was verified);
-    - `mailto:` has no target;
-    - link classes match the spec, the underline colour equals `--border`, and no raw markers are left in the DOM.
-  - **`--logo`/`bg-logo`** resolve to `#ffffff`/`rgb(255,255,255)` in light and `#f4f4f5`/`rgb(244,244,245)` in dark. This was checked with a temporary probe element, since removed.
-  - **Validator:** with a temporary `logo: "logo.png"` and `links: [{ label: "Broken", url: "" }]`, both new warnings appear in the single grouped `[content]` warning. The file was restored from a backup, and `Home.tsx` likewise.
-  - **Console in dev:** only the expected Drive-link `[content]` warning; no key warnings and no errors.
-  - `pnpm build` and `pnpm lint` are clean, with zero warnings.
-- **Bundle: 132.2 KB gzip initial JS (394.8 KB raw), within the new 140 KB hard cap.** It was 131.3 after Step 9; RichText, react-router `Link` use and the preview added 0.9 KB. Step 12 will drop the preview but add the real Home (avatar, bio, accordion, featured projects), so record the size again there.
-- **Steps that gained new "Done when" items:**
-  - **10:** tiles, RichText bullets, labels, links row, `headingAs`, accordion mode;
-  - **11:** RichText descriptions;
-  - **12:** RichText bio, accordion on Home, removal of the preview, cap;
-  - **13:** wrapper border;
-  - **14:** motion audit for the accordion, chevron and copy icon, plus a `dangerouslySetInnerHTML` grep;
-  - **15:** 140 KB hard cap;
-  - **16:** new §9 boxes, the footer-wrap issue, the Ideas list review;
-  - **19:** new.
+- **Last completed step:** Step 10 — Experience item + Experience page. Step 11 (Project card + Projects page) is next.
+- **Files created:**
+  - `src/components/experience/CompanyLogo.tsx`: as in §6.2. The logo tile is `bg-logo` with `alt=""`; the monogram tile is `bg-subtle` and `aria-hidden`.
+  - `src/components/experience/ExperienceItem.tsx` has both modes:
+    - full (default);
+    - `expandable`: chevron, `useId` panel, `inert`, grid-rows accordion.
+
+    It also takes `headingAs` (default `"h3"`). All details blocks follow §6.2.
+- **Files changed:**
+  - `src/lib/dates.ts`: new `totalExperience(list)`, the time since the earliest start, which feeds the page subtitle.
+  - `src/pages/Experience.tsx`: the real page. It has:
+    - `PageHeader` with the subtitle "1 yr 4 mos of experience." (computed);
+    - `<meta name="description">`;
+    - a `divide-y divide-border` list, each row `py-8 first:pt-0`, using `headingAs="h2"`.
+  - `IMPLEMENTATION.md`:
+    - §3.8: `totalExperience` added to the code block;
+    - §6.2: the duration line now uses a guarded `duration` variable;
+    - §6.3: the subtitle and description text are spelled out.
+  - Deleted `src/components/experience/.gitkeep`.
+- **Verified with headless Chrome against dev** (320, 375, 768 and 1440px, light and dark, via a CDP script in the session scratchpad):
+  - **Order and badge:** Company A (current, "Working" badge) comes before Company B.
+  - **Duration:** "· 11 mos" is `display:none` below `sm` and inline from 768px up.
+  - **Tiles:**
+    - 40×40 below `sm`, 48×48 from `sm` up;
+    - the logo tile is `rgb(255,255,255)` in light and `rgb(244,244,245)` in dark;
+    - the monogram "C" sits on `bg-subtle`;
+    - the img has `alt=""`, 48/48, lazy, async and `object-contain p-1.5`, and loads (no 404).
+  - **Content column:**
+    - every title, label, chip list, bullet list and links row shares one left edge (76px at 320, 417px at 1440);
+    - the only other x position is the right-aligned date column on `sm+`.
+  - **Labels:** both labels use `text-sm font-medium text-muted`.
+  - **RichText:**
+    - one `<strong>` with the metric;
+    - the inline "write-up" and the "Case study" `ExternalLink` both get `_blank` and `noopener noreferrer`;
+    - the links row has `mt-4 flex flex-wrap gap-x-4 gap-y-2`.
+  - **No `border-t`** on the Experience page. The only bordered elements are the tiles, the chips and the StatusBadge.
+  - **Headings** go h1 → h2 → h2. No chevrons on the Experience page.
+  - **Overflow:** no horizontal overflow at any width.
+  - **Console:** only the expected Drive-link `[content]` warning. No errors, no key warnings, no HTTP ≥ 400.
+  - **`expandable` was checked on a temporary render on Home** (since reverted; `Home.tsx` matches its backup and `git status` shows no change). It used 2 real items plus a details-less item with a very long company name:
+    - the chevron is 36×36 with a `size-4` icon, and the h3 stays 24px tall;
+    - `aria-expanded`, `aria-controls` and "Show/Hide details for …" all update;
+    - `rotate` goes `90deg` when open, over 0.3s;
+    - the panel animates `grid-template-rows 0.3s` from 0px to about 396px; mid-animation at 120ms it was 360px high at opacity 0.59;
+    - closed panels are `inert`, height 0 and opacity 0. The Tab order skips their links; once opened, "write-up" and "Case study" join the Tab order after the chevron;
+    - focus rings inside an open panel aren't clipped (the outline box is ≥ 0px inside the overflow box on every side);
+    - **reduced motion:** all three transitions become `1e-05s`, so it opens instantly;
+    - the details-less item has no chevron and no panel, and its long name wraps at 320 and 375px with no overflow;
+    - panel order: `border-t` divider, then Technologies & Tools, then What I've done, then links;
+    - no duration in `expandable` mode.
+  - `pnpm build` and `pnpm lint` are clean. Greps for raw colours, `transition-all` and `dangerouslySetInnerHTML` in the new files: none.
+- **Bundle:** **132.3 KB** gzip initial JS (395.0 KB raw), within the 140 KB cap. The Experience lazy chunk is 2.2 KB gzip.
+- **Step 10 deviations (small, already in the spec):**
+  - **The duration span renders only when `formatDuration` is non-empty,** so a future start date can't leave a stray "·".
+  - **The role/type line is guarded with `subtitle &&`.** `role` is required, so it always shows in practice.
+  - **The company `<a>`/`<span>` gets `min-w-0`,** so a long single-word name can wrap inside the flex heading. The `<a>` also has `underline-offset-4 hover:underline` plus the focus ring (the spec only said "…").
 - **Owner decisions (final; don't reopen):**
   1. **After Step 8:** the three Step 8 deviations are accepted and documented (36px social icon links; `links: readonly Social[]`; `validate.ts` hot-accept). The 320px nav keeps the horizontal-scroll fallback (§4.5 has the real measurements).
   2. **Consolidation pass, bundle:** initial JS **≤ 140 KB gzip, a hard cap** (supersedes Step 8's 130 KB). If it's exceeded later, **code-split; never raise it again, and keep the full `SOCIAL_ICONS` and `TECH_ICONS` registries.** Recorded in §8, CLAUDE.md DoD #7 and Step 15.
@@ -149,7 +95,7 @@ _Overwrite this section at the end of every step._
     - `min-w-0` on `<nav>`, `whitespace-nowrap` on links, and `size-4.5` toggle icons.
   - From Step 6:
     - Two `<title>` tags end up in `<head>`; React's comes first, so the tab title is right.
-    - Pages still lack `<meta name="description">`; add them in Steps 10 to 13.
+    - Pages still lack `<meta name="description">`; add them in Steps 10 to 13 (Experience done in Step 10). The static description in `index.html` stays first in `<head>`, so each page ends up with two; review it in Step 15 or 17.
     - `errorElement` shows "404" even when a page crashes.
   - From Step 4: `src/lib/resume.ts` exists early, because the validator uses `getDriveId`. The data-file comment headers go beyond the spec.
   - From Step 3: `eslint.config.js` allows the `useTheme` export via `allowExportNames`.
@@ -170,7 +116,7 @@ _Overwrite this section at the end of every step._
   - **Footer socials at 320px in desktop Chrome wrap to 2 rows.** The 15px classic scrollbar gutter leaves 265px for 276px of icons; phones, with overlay scrollbars, show 1 row. **Look at it in Step 16:** for example `gap-0` below `sm` (252px), or accept the wrap.
   - **The Step 9 preview on Home is temporary.** Step 12 replaces it.
   - Git on Windows warns about LF→CRLF. Add `.gitattributes` with `* text=auto eol=lf` if you want LF everywhere; ask first.
-  - Delete the `.gitkeep` files as real files land in each folder (`experience/` and `projects/` still have them).
+  - Delete the `.gitkeep` files as real files land in each folder (`projects/` still has one).
 
 ---
 
@@ -227,7 +173,7 @@ _Overwrite this section at the end of every step._
   `Section`, `PageHeader`, `Reveal`, `TechChip`, `StatusBadge`, `ExternalLink`, `CopyEmail` + `useCopyToClipboard`. `RichText` + `lib/richText.ts` (§5.8) were added in the consolidation pass after Step 9.
   **Done when:** each component renders on a stub page without errors; copy-email shows the copied state and announces it; StatusBadge ping is hidden with reduced motion.
 
-- [ ] **Step 10: Experience item + Experience page**
+- [x] **Step 10: Experience item + Experience page**
   Read: §6.2, §6.3, §5.8
   `CompanyLogo`, `ExperienceItem` (both modes: full and `expandable`, plus `headingAs`), the Experience page. Add the page's `<meta name="description">`.
   **Done when:**
