@@ -207,8 +207,8 @@ No `baseUrl`: TypeScript 6 rejects it (TS5101), and `paths` alone resolves relat
     <meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <!-- Avatar preload: enable once public/avatar.webp exists (remove entirely if site.avatar is null) -->
-    <!-- <link rel="preload" as="image" href="/avatar.webp" fetchpriority="high" /> -->
+    <!-- Avatar preload (LCP image). Keep href in sync with site.avatar; delete this line if site.avatar is null -->
+    <link rel="preload" as="image" href="/avatar.webp" fetchpriority="high" />
 
     <title>Your Name — Full-Stack Engineer</title>
     <meta name="description" content="Portfolio of Your Name." />
@@ -225,7 +225,7 @@ No `baseUrl`: TypeScript 6 rejects it (TS5101), and `paths` alone resolves relat
 </html>
 ```
 
-(Keep the avatar preload commented out until `public/avatar.webp` exists, then enable it. Delete it if `site.avatar` is `null`.)
+(The avatar preload is enabled since Step 12, when a placeholder `public/avatar.webp` was added. Keep its `href` in sync with `site.avatar`; delete it if `site.avatar` is `null`.)
 
 ### 2.6 Theme (`src/lib/theme.ts`, `src/context/ThemeContext.tsx`)
 
@@ -1060,18 +1060,23 @@ Every page renders its own `<title>` and `<meta name="description">` (React 19 h
 <meta name="description" content={`Projects by ${site.name}.`} />
 ```
 
-Home title: `` `${site.name} — ${site.role}` ``.
+Home title: `` `${site.name} — ${site.role}` ``; Home description: `site.tagline`, falling back to `` `${site.name}, ${site.role}.` ``.
 
 ### 6.1 Home (`/`)
 
 Each block in `<Reveal step={n}>`:
 
-1. **Hero** — avatar (`size-16 sm:size-20 rounded-full object-cover`, `width={80} height={80}`, `fetchPriority="high"`, not lazy) + name (`<h1>`, page-title scale) + `role · location` + `<CopyEmail />` in `flex flex-wrap items-center gap-x-2 gap-y-1` (meta scale). If `site.avatar` is null, the layout still looks intentional.
-2. **Bio** — `site.bio` paragraphs, each `<p><RichText text={paragraph} /></p>`, body scale, `max-w-prose space-y-3`.
-3. **Socials** — `<SocialLinks className="-ml-2" />` (aligns icon glyphs with the text edge).
-4. **Experience** — `Section title="Experience"` with action `View all →` (`Link` to `/experience`, hidden if total ≤ limit). First `site.home.experienceLimit` of `sortExperience(experience)` as **`expandable`** `ExperienceItem`s (accordion, §6.2), `space-y-8`. All start closed; each opens independently.
-5. **Featured projects** — `featured` projects, max `site.home.projectLimit`, compact `ProjectCard` grid `grid gap-4 sm:grid-cols-2`, action `All projects →`. Section hidden if none are featured.
-6. **Skills** — `grid gap-x-6 gap-y-4 sm:grid-cols-[8rem_1fr]`: group label (meta scale) + chip list. Stacked on mobile.
+1. **Hero** — a row with the avatar and the name/role block **side by side at all widths** (the Reveal is `flex items-center gap-4 sm:gap-5`; never stacked):
+   - avatar: `size-16 shrink-0 rounded-full bg-subtle object-cover sm:size-20`, `alt=""` (the name is right beside it), `width={80} height={80}`, `fetchPriority="high"`, not lazy;
+   - name/role block, `min-w-0 flex-1`: name (`<h1>`, page-title scale, `break-words`), then a `mt-3 flex flex-wrap items-center gap-x-2 gap-y-1` row (meta scale) with `<p className="mr-2">{role · location}</p>` + `<CopyEmail />`;
+   - if `site.avatar` is null, the image is omitted and the name/role block leads alone, flush with the content edge.
+2. **Bio** — `site.bio` paragraphs, each `<p><RichText text={paragraph} /></p>`, body scale, `mt-8 max-w-prose space-y-3` (the Reveal itself carries the classes).
+3. **Socials** — `mt-6`, `<SocialLinks className="-ml-2" />` (aligns icon glyphs with the text edge).
+4. **Experience** — `Section title="Experience"` with action `View all →` (`Link` to `/experience`, hidden if total ≤ limit; action links `shrink-0 text-sm font-medium text-muted transition-colors hover:text-fg` + focus ring). First `site.home.experienceLimit` of `sortExperience(experience)` as **`expandable`** `ExperienceItem`s (accordion, §6.2), `space-y-8`. All start closed; each opens independently.
+5. **Featured projects** — `featured` projects, max `site.home.projectLimit`, compact `ProjectCard` grid `grid gap-4 sm:grid-cols-2`, action `All projects →` (hidden when every project is already shown). Section hidden if none are featured.
+6. **Skills** — `grid gap-x-6 gap-y-4 sm:grid-cols-[8rem_1fr]`: group label (`text-sm text-muted sm:pt-1`, centred on the first chip row) + chip list (`-mt-2 sm:mt-0 flex flex-wrap gap-2`, so a stacked label sits 8px above its chips on mobile).
+
+Reveal steps 0–5 in this order. Sections with no data (no jobs, no featured projects, no skills, empty bio) render nothing.
 
 ### 6.2 `ExperienceItem` + `CompanyLogo`
 
@@ -1242,8 +1247,10 @@ Page (`const links = getResumeLinks(site.resume.driveUrl)`):
 - `PageHeader` "Resume", subtitle `Updated ${formatMonth(site.resume.updated)}`.
 - **`links` is null** (placeholder or malformed link): render only "Resume coming soon." at body scale. No buttons, no iframe. (The dev validator warns about this, see §3.10.)
 - Action row `flex flex-wrap gap-3`. Both links use `target="_blank" rel="noopener noreferrer"`:
-  - **Download** → `links.download`, primary: `h-10 px-4 rounded-lg bg-fg text-bg text-sm font-medium inline-flex items-center gap-2 transition-opacity hover:opacity-90`
-  - **Open in Google Drive** → `links.view`, secondary: same size, `border border-border hover:bg-subtle transition-colors`
+  - **Download** → `links.download`, primary: `h-10 px-4 rounded-lg bg-fg text-bg text-sm font-medium inline-flex items-center gap-2 transition-opacity hover:opacity-90`, with a leading `LuDownload` icon (`size-4 shrink-0`, `aria-hidden`)
+  - **Open in Google Drive** → `links.view`, secondary: same size, `border border-border hover:bg-subtle transition-colors`, with a trailing `LuArrowUpRight` icon (`size-4 shrink-0`, `aria-hidden`)
+  - Both carry the standard focus ring. The shared classes live in a `BUTTON` constant in `Resume.tsx`, combined with `cn()`. At 320px the two buttons wrap onto two rows (119 + 12 + 192px > 280px); that's expected.
+- Meta description: `` `Resume of ${site.name}, ${site.role}.` ``
 - Preview iframe on **all** screen sizes, with a centred "Loading preview…" behind it so the box is never blank while it loads:
 
   ```tsx
@@ -1263,7 +1270,7 @@ Page (`const links = getResumeLinks(site.resume.driveUrl)`):
 
 ### 6.6 NotFound
 
-`PageHeader` "404" / "This page doesn't exist." + `Link` "Go home →". Rendered inside normal header/footer.
+`PageHeader` "404" / "This page doesn't exist." + `Link` "Go home →" (`text-sm font-medium text-fg underline-offset-4 hover:underline` + focus ring). Meta description: "This page doesn't exist." Rendered inside normal header/footer.
 
 **Phase 5 acceptance**
 - [ ] One `<h1>` per page; heading levels don't skip.

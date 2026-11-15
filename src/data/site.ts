@@ -8,6 +8,7 @@ import type { Site } from "@/types/content";
  *   To update the resume, upload a new version in Drive (Manage versions); the link stays the same.
  * Optional: tagline, location
  * Also update the static <title>/description/OG tags in index.html to match.
+ * avatar: square image (≥ 160×160 webp, ≤ 30 KB). Changing or nulling it → update/delete the avatar preload line in index.html.
  */
 export const site = {
   name: "Your Name",

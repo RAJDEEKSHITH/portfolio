@@ -20,8 +20,8 @@
     <meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <!-- Avatar preload: enable once public/avatar.webp exists (remove entirely if site.avatar is null) -->
-    <!-- <link rel="preload" as="image" href="/avatar.webp" fetchpriority="high" /> -->
+    <!-- Avatar preload (LCP image). Keep href in sync with site.avatar; delete this line if site.avatar is null -->
+    <link rel="preload" as="image" href="/avatar.webp" fetchpriority="high" />
 
     <title>Your Name — Full-Stack Engineer</title>
     <meta name="description" content="Portfolio of Your Name." />

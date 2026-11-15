@@ -10,52 +10,54 @@ Each step lists the `IMPLEMENTATION.md` sections to read. Read only those.
 
 _Overwrite this section at the end of every step._
 
-- **Last completed step:** Step 11 — Project card + Projects page. Step 12 (Home page) is next.
-- **Files created:**
-  - `src/components/projects/ProjectCard.tsx` (§6.4). Props:
-    - `project`;
-    - `compact?`: hides the image; Home uses it in Step 12;
-    - `headingAs?: "h2" | "h3"`: defaults to `"h3"`; the Projects page passes `"h2"`.
-  - **`public/projects/project-one.webp`:** a neutral grey 1280×720 placeholder (5.5 KB), drawn with headless Chrome's canvas. It stops the sample data from 404ing. **Replace it with a real screenshot.**
-- **Files changed:**
-  - `src/pages/Projects.tsx`: the real page. It has:
-    - `PageHeader` with a subtitle;
-    - `<meta name="description">`;
-    - a `grid gap-5 sm:grid-cols-2` of cards in data order.
-  - `IMPLEMENTATION.md` §6.4: the props, spacing, easing, aria-labels, subtitle and description are all spelled out.
-  - Deleted `src/components/projects/.gitkeep`.
-- **Step 11 deviations (now in the spec):**
-  - **`headingAs` prop,** for the same reason as ExperienceItem: no h1 → h3 skip on the Projects page.
-  - **"Live"/"Source" get `aria-label`s** such as "Live: Project One", so a screen reader's link list can tell the cards apart. The visible text comes first, so label-in-name holds.
-  - **The image transition uses the spec easing** plus `motion-reduce:transition-none`.
-  - **The subtitle is generic UI copy:** "Things I've built, with links to the live sites and source code." Edit it in `Projects.tsx` if you want different wording.
-- **Verified with headless Chrome against dev**, at 320, 375, 414, 768, 1024, 1440 and 1920px in light and dark. Three temporary projects were added to `projects.ts` for this, and the file was restored from a backup afterwards; `git status` shows no change there. The temporary projects were:
-  - **bare:** no image, links, year or tech, plus rich-text edge cases;
-  - **long title:** an image, source link only, a 66-character single-word title and an unknown tech;
-  - **long text:** a long description and a live link only.
+- **Last completed step:** Step 13 — Resume page + 404 page. Step 14 (Motion + polish pass) is next.
+- **Uncommitted Step 12 work:** when this step started, Step 12 and its hero fix were still uncommitted (`Home.tsx`, `index.html`, `site.ts` header, `public/avatar.webp`, spec, PROGRESS). They're still in the working tree, so the next commit holds Steps 12 and 13 unless the owner splits them.
+- **Files changed (Step 13):**
+  - **`src/pages/Resume.tsx`:** built per §6.5.
+    - `links = getResumeLinks(site.resume.driveUrl)`.
+    - `PageHeader` "Resume" with `Updated <Mon YYYY>`.
+    - **When `links` is null:** only "Resume coming soon." at body scale.
+    - **Otherwise:**
+      - a `flex flex-wrap gap-3` row: primary **Download** (leading `LuDownload`) and secondary **Open in Google Drive** (trailing `LuArrowUpRight`), both `_blank` + `noopener noreferrer` with a focus ring;
+      - then the bordered `bg-subtle` wrapper, with an `aria-hidden` "Loading preview…" behind the lazy iframe, exactly as in the spec snippet.
+    - Meta description `Resume of <name>, <role>.`
+  - **`src/pages/NotFound.tsx`:** `PageHeader` "404" / "This page doesn't exist." plus a router `Link` "Go home →" (`text-sm font-medium text-fg`, hover underline, focus ring). Meta description "This page doesn't exist."
+  - **`IMPLEMENTATION.md`:** §6.5 now has the button icons, the `BUTTON` constant + `cn()`, the 320px wrap note and the meta description; §6.6 has the link classes and the meta description.
+- **Step 13 decisions:**
+  - **Button icons** (download / arrow-up-right) fill the spec's `gap-2`. They come from `react-icons/lu`, which is already a dependency.
+  - **No `Reveal` on Resume or 404,** matching the Experience and Projects pages; only Home staggers.
+  - **At 320px the two buttons wrap onto two rows,** via `flex-wrap`, as intended. From 375px up they sit on one row.
+- **Verified with headless Chrome against dev** in three data states. `site.ts` was backed up, edited temporarily and restored byte-for-byte; `driveUrl` is back to the placeholder.
+  1. **Placeholder link** (320, 375, 414, 768, 1024, 1440 and 1920px, light and dark):
+     - only "Resume coming soon." shows: no `<a>`, no iframe;
+     - the title is "Resume — Your Name", the subtitle "Updated Nov 2026", and h1 is the only heading;
+     - no overflow;
+     - the expected `[content]` Drive warning.
+  2. **Well-formed test link** (`/file/d/1TestFileId_…/view?usp=sharing`, all 7 widths, both themes):
+     - Download → `uc?export=download&id=…` and Drive → `/file/d/…/view`, both `_blank` + `noopener noreferrer`, both 40px high and `rounded-lg`;
+     - the iframe src is `/preview`, `loading="lazy"`, `border: 0`, `display: block`, with a transparent background, so "Loading preview…" (centred, offset 0) shows through while it loads;
+     - the wrapper is `bg-subtle` with a 1px border, and the iframe fills it with no baseline gap;
+     - the iframe is 278×393 at 320px (aspect ratio) and 718×765 at 1440×900, so `85dvh` caps it; at 1440×600 it's 510px (85% of 600);
+     - no horizontal overflow at any width;
+     - the Tab order is header → Download → Open in Google Drive → iframe, with a 2px solid focus ring on each link;
+     - **no console warnings** (the Drive warning goes away).
 
-  Results:
-  - **Columns:** 1 below `sm`, 2 from 768px up.
-  - **Rows:** cards in a row have equal heights (for example 401/401 and 432/432), and the links rows' bottoms line up at the same y.
-  - **Cards with missing parts:** the bare card shows title and description only, with no empty rows. The long title wraps and never overflows.
-  - **No nested anchors** (`a a`, `a article`: 0).
-  - **Images:**
-    - `alt` = title, 1280/720, lazy, async;
-    - box at exactly 16:9 at every width;
-    - **CLS = 0** at every width (PerformanceObserver).
-  - **RichText:**
-    - `**bold**` → `<strong>`;
-    - `[internal link](/experience)` → router `<Link>`, with no target;
-    - `**unclosed`, `[bad](javascript:…)` and `<b>html</b>` all show as literal text.
-  - **Title links:** `live ?? github`, `_blank`, `noopener noreferrer`.
-  - **Headings:** h1 → h2 ×4.
-  - **Hover:** the card border becomes `fg/20`; the image goes to `scale: 1.02` over 0.5s with the spec easing, clipped by `overflow:hidden`.
-  - **Overflow:** none anywhere.
-  - **Console:** only the expected Drive-link `[content]` warning. No errors, no key warnings, no 404s.
-  - `pnpm build` and `pnpm lint` are clean. Greps for raw colours, `transition-all` and `dangerouslySetInnerHTML` in the new files: none.
-  - **Not tested:** `compact` mode wasn't rendered. It's a single `!compact` condition on the image, and Step 12 renders it on Home.
-- **Bundle:** **132.3 KB** gzip initial JS (395.0 KB raw), unchanged and within the 140 KB cap. The Projects lazy chunk is 1.2 KB gzip.
-- **Session note:** in the last session `TaskStop` killed `pnpm dev` but left its Vite child alive on port 5199. This session found it and stopped it. Next time, check the port before starting a dev server.
+     Screenshots show Drive's "file does not exist" page inside the rounded frame, which is expected for a fake ID.
+  3. **Malformed link** (`https://example.com/my-resume.pdf`): only "Resume coming soon.", and the validator warns.
+
+  **404** (`/nope/deep`, 320 and 1440px, both themes):
+  - h1 "404", the subtitle, and "Go home →" with `href="/"`;
+  - the tab title "Page not found — Your Name";
+  - no overflow;
+  - clicking "Go home" lands on `/` with the Home title.
+- **⚠ Not verifiable without the owner's file:** that "Download" actually downloads and that the preview renders the real PDF. **Once you paste the real share link into `site.resume.driveUrl`, open `/resume` and click both buttons.**
+  - If Download opens a "can't scan for viruses" page instead, the file is over about 100 MB; that won't happen for a resume.
+  - If the preview says "access denied", the file isn't shared as "Anyone with the link".
+- **Bundle: 135.2 KB gzip initial JS, within the 140 KB cap.** That's `index` at 130.07 KB plus a modulepreloaded shared chunk at 5.13 KB.
+  - Vite/Rolldown now splits code shared between the eager entry and the lazy pages (it includes `react-icons/lu`, which Resume now imports) into a chunk it happens to name `PageHeader-*.js`. `index.html` modulepreloads it, so count it as initial.
+  - Up from 134.4 KB. The lazy Resume chunk is 0.91 KB.
+- `pnpm build` and `pnpm lint` are clean (rerun after restoring `site.ts`). Greps on both pages: no raw colours, `transition-all` or `dangerouslySetInnerHTML`.
+- **Session note:** `TaskStop` on `pnpm dev` again left the Vite child listening on 5199 (PID killed via `Get-NetTCPConnection -LocalPort 5199`). The port is free.
 - **Owner decisions (final; don't reopen):**
   1. **After Step 8:** the three Step 8 deviations are accepted and documented (36px social icon links; `links: readonly Social[]`; `validate.ts` hot-accept). The 320px nav keeps the horizontal-scroll fallback (§4.5 has the real measurements).
   2. **Consolidation pass, bundle:** initial JS **≤ 140 KB gzip, a hard cap** (supersedes Step 8's 130 KB). If it's exceeded later, **code-split; never raise it again, and keep the full `SOCIAL_ICONS` and `TECH_ICONS` registries.** Recorded in §8, CLAUDE.md DoD #7 and Step 15.
@@ -76,7 +78,14 @@ _Overwrite this section at the end of every step._
     - the company `<a>`/`<span>` gets `min-w-0`, and the `<a>` gets a hover underline.
 
     `totalExperience` was added to `lib/dates.ts` for the page subtitle.
-  - **From Step 11:** see the Step 11 deviations above. `ProjectCard` also has `headingAs`.
+  - **From Step 11:**
+    - `ProjectCard` has `headingAs` (h2 on the Projects page);
+    - "Live"/"Source" get `aria-label`s like "Live: <title>";
+    - the image transition uses the spec easing plus `motion-reduce`;
+    - the Projects subtitle is generic UI copy in `Projects.tsx`;
+    - `public/projects/project-one.webp` is a placeholder.
+  - **From Step 12:** the hero is side by side at all widths; the avatar has `alt=""` and `bg-subtle`; "All projects →" hides when everything is shown; the skills label alignment; `tagline` is used only as the Home meta (all in §6.1).
+  - **From Step 13:** the Resume button icons, no `Reveal` on Resume/404, and the 320px button wrap (all in §6.5).
   - **Consolidation pass:**
     - **`ExperienceItem` gets a `headingAs?: "h2" | "h3"` prop.** It isn't one of decisions A–I, but it's needed so the Experience page doesn't jump from h1 to h3, which would fail Phase 5's "heading levels don't skip". Home uses h3 (under the Section's h2); the Experience page uses h2.
     - **`expandable` replaces the old `compact` prop** (§6.2), so the item has only one mode flag.
@@ -92,7 +101,7 @@ _Overwrite this section at the end of every step._
     - `min-w-0` on `<nav>`, `whitespace-nowrap` on links, and `size-4.5` toggle icons.
   - From Step 6:
     - Two `<title>` tags end up in `<head>`; React's comes first, so the tab title is right.
-    - Pages still lack `<meta name="description">`; add them in Steps 10 to 13 (Experience and Projects done). The static description in `index.html` stays first in `<head>`, so each page ends up with two; review it in Step 15 or 17.
+    - Every page now has its `<meta name="description">` (Step 13 finished Resume and 404). The static description in `index.html` stays first in `<head>`, so each page ends up with two; review it in Step 15 or 17.
     - `errorElement` shows "404" even when a page crashes.
   - From Step 4: `src/lib/resume.ts` exists early, because the validator uses `getDriveId`. The data-file comment headers go beyond the spec.
   - From Step 3: `eslint.config.js` allows the `useTheme` export via `allowExportNames`.
@@ -100,18 +109,17 @@ _Overwrite this section at the end of every step._
 - **Owner needs to provide:**
   - real content in `src/data/*`;
   - the resume's Google Drive share link in `site.resume.driveUrl` (Share → "Anyone with the link" → Viewer);
-  - `public/avatar.webp` and `public/og.png` (1200×630);
+  - a real `public/avatar.webp` to replace the placeholder (square, ≥ 160×160, ≤ 30 KB). If you set `avatar: null`, delete the preload line in `index.html`;
+  - `public/og.png` (1200×630);
   - project images: replace the placeholder `public/projects/project-one.webp`;
   - **real company logos in `public/logos/`** (square `.svg`/`.webp`). Replace `company-a.svg`, or drop `logo` to get a letter tile.
 
   Placeholders are fine until then. The `<title>`, description and OG text in `index.html` are static placeholders, so edit them by hand to match `site.ts`.
 - **Known issues / TODO:**
-  - **Missing placeholder file:** `site.avatar` (`/avatar.webp`) doesn't exist yet, so it will 404 once Step 12 renders it. Add the file, or set `avatar: null`. The logo and project-image placeholders exist.
   - **Expected dev warning:** the single `[content]` warning about the placeholder Drive link appears until a real link is pasted. It prints once per full page load and after each hot data edit.
   - **Nav at 320px:** after navigating to `/resume`, the active "Resume" link stays partly clipped. **Fixed in Step 16** (scroll-into-view on route change, §4.5).
   - **Footer border at 1440px:** the full-width top border stops about 15px short of the right edge, at the scrollbar gutter. **Fixed in Step 16** (the hairline moves onto an inner element, §4.7).
   - **Footer socials at 320px in desktop Chrome wrap to 2 rows.** The 15px classic scrollbar gutter leaves 265px for 276px of icons; phones, with overlay scrollbars, show 1 row. **Look at it in Step 16:** for example `gap-0` below `sm` (252px), or accept the wrap.
-  - **The Step 9 preview on Home is temporary.** Step 12 replaces it.
   - Git on Windows warns about LF→CRLF. Add `.gitattributes` with `* text=auto eol=lf` if you want LF everywhere; ask first.
   - Delete the `.gitkeep` files as real files land in each folder (all folders that had one now have real files).
 
@@ -203,7 +211,7 @@ _Overwrite this section at the end of every step._
   Read: §6.4, §5.8
   **Done when:** 1 column on mobile, 2 on `sm+`; cards in a row line up; projects with no image or links still look intentional; no nested anchors; images lazy-load with no layout shift; **descriptions render through `RichText`** (`**bold**` and `[label](url)` work, broken markers show as text); the page has its `<meta name="description">`.
 
-- [ ] **Step 12: Home page**
+- [x] **Step 12: Home page**
   Read: §6.1, §6.2 (accordion part)
   Hero, bio, socials, expandable experience, featured projects, skills, all wrapped in `Reveal` with stagger. **Replaces the temporary Step 9 preview entirely.**
   **Done when:**
@@ -219,7 +227,7 @@ _Overwrite this section at the end of every step._
     - no chevron on an item with no details;
   - initial JS is **≤ 140 KB gzip** (record it). If it's over, code-split; don't raise the cap.
 
-- [ ] **Step 13: Resume page + 404 page**
+- [x] **Step 13: Resume page + 404 page**
   Read: §6.5, §6.6
   Resume comes from Google Drive (`site.resume.driveUrl` → `src/lib/resume.ts`).
   **Done when:** with a real Drive link, "Download" and "Open in Google Drive" both open in a new tab and work; the Drive preview iframe shows at every width (capped at `85dvh`, no overflow at 320px) inside the wrapper (`relative mt-8 overflow-hidden rounded-lg border border-border bg-subtle`, iframe without its own border) with "Loading preview…" visible behind it while it loads; with the placeholder or a malformed link, only "Resume coming soon." shows (no buttons, no iframe); 404 has a working "Go home" link.
