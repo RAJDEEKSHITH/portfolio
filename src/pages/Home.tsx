@@ -22,7 +22,7 @@ const work: readonly Project[] = projects;
 
 // "View all …" links below a list
 const ACTION =
-  "mt-8 inline-block text-sm font-medium text-muted transition-colors hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg";
+  "mt-8 inline-block text-sm font-medium text-muted transition-colors hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg focus-visible:transition-none";
 // Same divider rhythm as the Experience page; last:pb-0 so the gap below a list is set by what follows it
 const ROW = "py-8 first:pt-0 last:pb-0";
 

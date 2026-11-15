@@ -145,7 +145,7 @@ public/          # avatar.webp, favicon.svg, og.png, robots.txt, logos/ (company
 ## Accessibility
 
 - Landmarks: `<header>`, `<nav aria-label="Primary">`, `<main id="main">`, `<footer>`. Skip link to `#main`.
-- Focus: `focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg` on every interactive element.
+- Focus: `focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg` on every interactive element. A `text-muted` control that uses `transition-colors` also gets `focus-visible:transition-none`, so its ring appears instantly instead of fading in (IMPLEMENTATION.md §7).
 - Icon-only controls need `aria-label`; decorative icons get `aria-hidden`.
 - External links: `target="_blank" rel="noopener noreferrer"` (not for `mailto:`).
 - One `<h1>` per page; contrast ≥ 4.5:1 in both themes.

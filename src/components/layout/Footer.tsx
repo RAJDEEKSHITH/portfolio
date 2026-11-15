@@ -4,12 +4,15 @@ import { site } from "@/data/site";
 
 export function Footer() {
   return (
-    <footer className="border-t border-border">
-      <Container className="flex flex-col-reverse items-center gap-4 py-8 sm:flex-row sm:justify-between">
-        <p className="text-sm text-muted">
-          © {new Date().getFullYear()} {site.name}
-        </p>
-        <SocialLinks size="sm" />
+    <footer>
+      {/* The hairline sits inside the Container so it spans exactly the text width */}
+      <Container>
+        <div className="flex flex-col-reverse items-center gap-4 border-t border-border py-8 sm:flex-row sm:justify-between">
+          <p className="text-sm text-muted">
+            © {new Date().getFullYear()} {site.name}
+          </p>
+          <SocialLinks size="sm" />
+        </div>
       </Container>
     </footer>
   );

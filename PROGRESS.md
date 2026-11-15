@@ -10,30 +10,47 @@ Each step lists the `IMPLEMENTATION.md` sections to read. Read only those.
 
 _Overwrite this section at the end of every step._
 
-- **Last completed step:** Step 14 — Motion + polish pass. Step 15 (Performance pass) is next.
-- **Already committed before this step** (`3a797d9` and earlier): Steps 12–13, the Home experience **preview** layout (accordion removed), project links `{ github?, youtube?, live? }` as icons, Home projects as a list, and the flush-right icon fix (option B). Details are in IMPLEMENTATION.md §6.1, §6.2, §6.4 and §9.
-- **Files changed (Step 14):**
-  - **`public/favicon.svg`:** replaced the Vite logo with a monogram (§7): a 32×32 `rx=7` tile with a centred "Y" (placeholder initial from "Your Name"). Light scheme: `#18181b` tile / `#fafafa` letter; dark scheme (media query inside the SVG): `#fafafa` / `#0a0a0a`.
-  - **`src/index.css`:** `--default-transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1)` in `@theme`, so every `transition-*` uses the house easing from CLAUDE.md. Before, they all used Tailwind's default `cubic-bezier(0.4, 0, 0.2, 1)`.
-  - **`ProjectCard.tsx`:** dropped the now-redundant `ease-[…]`; `motion-reduce:transition-none` became `motion-reduce:group-hover:scale-none`, so the image no longer **snaps** to 1.02 on hover under reduced motion.
-  - **`ExternalLink.tsx`:** `motion-reduce:group-hover:translate-none`, so the arrow doesn't jump 2px under reduced motion.
+- **Last completed step:** Step 16 — Responsive + accessibility QA. Step 17 (Deploy prep + README) is next.
+- **Step 15 is not committed yet** (it changed only this file), so the next commit holds Steps 15 and 16 unless you split them. Step 15's results, kept here: initial JS 135.24 KB gzip at that point; against `pnpm preview` with mobile throttling (150ms RTT, 1.6 Mbps, CPU 4×): **CLS 0** on every cold load, FCP 1.19–1.56s, **LCP 1.56–1.96s** (8 of 10 loads under 1.8s); no layout shift on theme toggle; navigation shifts are input-flagged (CLS 0); lazy chunks warm on idle; images sized. **Not a Lighthouse score:** run `pnpm build && pnpm preview` → Chrome DevTools → Lighthouse → Mobile to get the real one.
+- **Owner decisions taken this step** (asked at the start; also in Owner decisions #6 below):
+  - **Footer socials at 320px:** `gap-0` below `sm` (footer only).
+  - **Ideas: Projects grid card heights:** accept equal heights (rows stay stretched). Removed from Ideas.
+  - **Focus-ring fade:** make rings instant (`focus-visible:transition-none` on the muted controls).
+- **Files changed:**
+  - **`src/components/layout/Header.tsx`:** `useLocation` + a `ref` on the nav `ul`; `useEffect(…, [pathname])` scrolls the `aria-current="page"` link into view (`block`/`inline: "nearest"`, instant). NavLinks get `focus-visible:transition-none`.
+  - **`src/components/layout/Footer.tsx`:** `<footer>` has no border; the hairline (`border-t border-border`) and the row classes moved to a `div` inside `<Container>`.
+  - **`src/components/ui/SocialLinks.tsx`:** the gap is `gap-0 sm:gap-1` for `size="sm"` (footer) and `gap-1` for `md` (Home, unchanged); links get `focus-visible:transition-none`.
+  - **`ThemeToggle.tsx`, `ProjectLinks.tsx`, `Home.tsx` (`ACTION`):** `focus-visible:transition-none`.
   - **Docs:**
-    - **`IMPLEMENTATION.md`:** §2.4 (the token in the snippet); §6.4 (image classes); §7 (table rows for buttons/card border and the Resume button's `transition-opacity`, durations on the arrow, the reduced-motion overrides, an easing + reduced-motion paragraph, and Favicon / Focus rings / `::selection` notes); §11 (favicon line).
-    - **`CLAUDE.md`:** the easing line names the token; a new owner-table row, "Favicon letter".
-- **Audit result (§7 table vs code):** every motion maps to a table row; nothing was removed.
-  - Route fade-in 0.4s; `Reveal` fade-up 0.5s with delays 0/60/…/300ms (6 steps); colours 150ms; arrow nudge 200ms; image scale 500ms; theme icons 300ms; copy icons 200ms; status ping.
-  - The only motion missing from the table was the Resume primary button's `transition-opacity` (already in §6.5); it now has a row.
-  - `grep` in `src` + `index.html`: no `transition-all`, `dangerouslySetInnerHTML`, `grid-template-rows`, `grid-rows`, width/height transitions, `scroll-behavior` or scroll listeners.
-- **Verified with headless Chrome against dev** (no data edits this step):
-  - **Runtime inventory** (every element's computed transition/animation, all 5 pages at 1440px): only `transition-colors` (150ms), `opacity, transform` (200/300ms), `transform` (200/500ms) and the `fade-in`/`fade-up`/`ping` keyframes; all transitions now report `cubic-bezier(0.22, 1, 0.36, 1)`; no transition on `all` with a non-zero duration.
-  - **Reduced motion emulated:** every transition/animation is 0.01ms; `Reveal` and the route wrapper are `animation: none`; the ping is `display: none`; forced hover gives image `scale: none` and arrow `translate: none` (without reduced motion: `1.02` and `2px -2px`).
-  - **Theme switch, both directions:** body, nav-link and link colours already have their final values **synchronously after the click** and are unchanged 2 frames and 500ms later (no fade lag); `.no-transitions` is on during the click and gone after a frame; the sun/moon crossfade still runs (opacities 0.13/0.87 at ~100ms, then 0/1); `localStorage` and the `dark` class update.
-  - **Focus rings:** Tab through `/`, `/experience`, `/projects`, `/resume` and a 404 at 320 and 1440px in both themes: every stop (13–25 per page) ends at 2px solid `fg` with a 2px offset. Order is logical (skip link → nav → toggle → content → footer).
-  - **`::selection`:** inverted in both themes (light: `#18181b` background with `#fafafa` text; dark: `#fafafa` background with `#0a0a0a` text); screenshot checked.
-  - **Favicon:** served as `image/svg+xml`; inline renders at 16/32/64px under emulated light and dark: light → dark tile, dark → light tile, legible at 16px on light and dark tab-strip colours.
-  - No horizontal overflow on any page/width/theme. Console: only the expected Drive warning.
-- `pnpm build` and `pnpm lint` are clean. **Bundle: 135.24 KB gzip initial JS** (`index` 130.09 + shared `PageHeader-*` chunk 5.15), within the 140 KB cap. CSS 10.19 KB gzip.
-- **Session note:** `TaskStop`/killing `pnpm dev` leaves the Vite child on 5199; free it with `Get-NetTCPConnection -LocalPort 5199 -State Listen | % { Stop-Process -Id $_.OwningProcess -Force }`. The port is free.
+    - **`IMPLEMENTATION.md`:** §4.5 (the active-link effect as built, the ring note), §4.6, §4.7 (snippet + hairline measurements), §4.8 (snippet, the `sm` gap rule and why), §6.1 (`ACTION`), §6.4 (`ProjectLinks` link classes), §7 (focus rings: instant, the trade-off, which controls).
+    - **`CLAUDE.md`:** the Accessibility focus line adds the `focus-visible:transition-none` rule.
+- **Decision:** the nav effect uses the **instant** scroll (the spec allowed instant, or smooth when motion is allowed). Instant can't fight `ScrollRestoration` and needs no reduced-motion branch.
+- **§9 sweep, headless Chrome against dev.** Every width (320, 375, 414, 768, 1024, 1440, 1920), light and dark, all 5 routes. A probe on every page checks:
+  - horizontal overflow and any element outside the viewport;
+  - overlapping text boxes;
+  - header: one line, 56px tall, exactly one correct active link (none on the 404) at `font-weight: 500`, fully visible in the nav strip, toggle inside the header;
+  - footer: hairline = Container content box, `<footer>` has no border of its own, socials on one row, and at `sm+` the hairline ends line up with © and the last icon;
+  - icon-only controls ≥ 36×36.
+
+  Page-specific checks:
+  - **Experience:** tiles 40px below `sm`, 48px from `sm`; title, labels, chips, bullets and links share the content column's left edge; dates stack under the title below `sm` and are right-aligned from `sm`.
+  - **Projects:** 1 grid column below 640px, 2 from 640px; cards in a row have equal heights; icons flush right.
+  - **Home:** first N highlights (2 · 1) in the same 15px muted bullets and tiles as the Experience page (3 · 1); no chips or labels; "View all experience →" present; project icon right edge = Experience date right edge (300 at 320px, 1073 at 1440px).
+  - **Resume (placeholder):** only "Resume coming soon."
+
+  **Result: 0 issues** in both passes (pass A: default data; pass B: below).
+  - **Pass B (temporary `site.ts`**: an internal `[projects](/projects)` and an external `[blog](…)` link in the bio, plus a test Drive link; restored byte-for-byte with `cmp`):
+    - Resume at all 7 widths × 2 themes: the iframe is 278×393 at 320px up to 718×765 at 1440/1920 (≤ `85dvh`); buttons are 40px, two rows only at 320px; no overflow;
+    - rich-text links: the internal one navigates client-side (same document, no reload), external ones have `_blank` + `noopener noreferrer`, and all three show the 2px `fg` ring on Tab.
+  - **Nav at 320px** (real mouse clicks, no test scrolling): Resume → Projects → Experience → Home → Resume; the active link is fully visible every time (`scrollLeft` 27 or 0), `scrollY` 0. A direct load of `/resume` at 320px shows "Resume" fully (screenshot). **Back-navigation:** Home scrolled to 600 → Resume → back → `scrollY` 600 restored, so the effect never scrolls the page.
+  - **Footer at 320px on a desktop browser** (classic 15px scrollbar, `clientWidth` 305): socials 252px wide, **one row**. Before: 2 rows.
+  - **Focus:** at 1440px, 30 Tab stops on Home; every ring's colour is `fg` on the frame it's focused (no fade); hover still uses `transition-colors` when not focused. **Skip link:** first Tab shows it (119×36 at the top left); Enter → `#main`; next Tab → the first link in main.
+  - **200% zoom** (CSS viewport 720, 640 and 512px at 2× DPR) on Home, Experience, Projects and Resume: no overflow, no overlap; screenshot checked.
+  - **Reduced motion:** no element with an active animation.
+  - Console: only the expected Drive warning (none in pass B, which had a valid link).
+- **⚠ Not verifiable here (please check on a real iPhone):** iOS Safari, i.e. no white flash on load in dark mode, the sticky header while the toolbar collapses, and `85dvh` on the Resume preview with the toolbar shown/hidden. Everything it depends on (the inline theme script, `color-scheme`, `min-h-dvh`, `dvh` units) is in place.
+- `pnpm build` and `pnpm lint` are clean. **Bundle: 135.33 KB gzip initial JS** (`index` 130.18 + shared chunk 5.15), up 0.09 KB from the nav effect.
+- **Session note:** killing `pnpm dev` leaves the Vite child listening; free it with `Get-NetTCPConnection -LocalPort 5199 -State Listen | % { Stop-Process -Id $_.OwningProcess -Force }`. The port is free.
 - **Owner decisions (final; don't reopen):**
   1. **After Step 8:** the three Step 8 deviations are accepted and documented (36px social icon links; `links: readonly Social[]`; `validate.ts` hot-accept). The 320px nav keeps the horizontal-scroll fallback (§4.5 has the real measurements).
   2. **Consolidation pass, bundle:** initial JS **≤ 140 KB gzip, a hard cap** (supersedes Step 8's 130 KB). If it's exceeded later, **code-split; never raise it again, and keep the full `SOCIAL_ICONS` and `TECH_ICONS` registries.** Recorded in §8, CLAUDE.md DoD #7 and Step 15.
@@ -44,6 +61,7 @@ _Overwrite this section at the end of every step._
      - the ExternalLink focus ring;
      - CopyEmail details;
      - `copy()` returning `Promise<boolean>`.
+  6. **Step 16:** footer socials `gap-0` below `sm`; the Projects grid keeps equal card heights in a row (no `items-start`); focus rings appear instantly (`focus-visible:transition-none` on `text-muted` controls with `transition-colors`).
 - **Decisions / deviations from spec** (everything below is now reflected in IMPLEMENTATION.md):
   - **From Step 10:**
     - the duration span renders only when it is non-empty, so there is no stray "·";
@@ -59,6 +77,7 @@ _Overwrite this section at the end of every step._
     - `public/projects/project-one.webp` is a placeholder.
   - **From Step 12:** the hero is side by side at all widths; the avatar has `alt=""` and `bg-subtle`; "All projects →" hides when everything is shown; the skills label alignment; `tagline` is used only as the Home meta (all in §6.1).
   - **From Step 13:** the Resume button icons, no `Reveal` on Resume/404, and the 320px button wrap (all in §6.5).
+  - **From Step 16:** the active-nav scroll is instant (not smooth); the footer gap rule lives on `SocialLinks size="sm"`, so Home's socials keep `gap-1`.
   - **From Step 14:**
     - the default transition easing token (CLAUDE.md asked for the house easing; Tailwind's default was in use);
     - reduced motion also cancels the two hover transforms instead of letting them snap;
@@ -71,7 +90,7 @@ _Overwrite this section at the end of every step._
   - From Step 9: see Owner decisions #5. `getTechIcon` is still exported but unused in render code.
   - From Step 8: `{...(!isMail && {...})}` became an `external` object, with the same behaviour.
   - From Step 7:
-    - **The 320px nav uses the scroll fallback.** "Resume" shows cut off until you swipe or Tab to it. `onFocus` calls `scrollIntoView`, and the toggle has `shrink-0`.
+    - **The 320px nav uses the scroll fallback.** "Resume" shows cut off until you swipe or Tab to it, or navigate to it (Step 16 scrolls the active link into view). `onFocus` calls `scrollIntoView`, and the toggle has `shrink-0`.
     - **The optional scrolled hairline (§4.5) isn't built.** Ask if you want it.
     - **Don't add a forced reflow after `setTheme`,** or the icon crossfade stops.
     - `min-w-0` on `<nav>`, `whitespace-nowrap` on links, and `size-4.5` toggle icons.
@@ -93,11 +112,9 @@ _Overwrite this section at the end of every step._
 
   Placeholders are fine until then. The `<title>`, description and OG text in `index.html` are static placeholders, so edit them by hand to match `site.ts`.
 - **Known issues / TODO:**
-  - **Focus-ring colour fade:** on `text-muted` controls (nav links, icon links, "View all …"), `transition-colors` also animates `outline-color`, so the ring fades from muted to `fg` over 150ms when focused; on `text-fg` controls it appears at once. The final ring is identical everywhere. Accepted and documented in §7; mention it to the owner at Step 16 if it bothers them.
+  - **Avatar preload on every route:** `index.html` preloads `/avatar.webp` on `/experience`, `/projects` etc. too, where no avatar is shown (≤ 30 KB, and it's cached for Home). It's per spec (§2.5); a static `index.html` can't tell routes apart. Leave it unless Lighthouse flags "preloaded but not used".
+  - **Unused JetBrains Mono:** `@fontsource-variable/jetbrains-mono` is imported (§2.2) but no component uses `font-mono`. Browsers never download it, so the only cost is ~1 KB of `@font-face` CSS. Keep it for code snippets later, or drop the import if you don't want it (ask first; it's in the spec).
   - **Expected dev warning:** the single `[content]` warning about the placeholder Drive link appears until a real link is pasted. It prints once per full page load and after each hot data edit.
-  - **Nav at 320px:** after navigating to `/resume`, the active "Resume" link stays partly clipped. **Fixed in Step 16** (scroll-into-view on route change, §4.5).
-  - **Footer border at 1440px:** the full-width top border stops about 15px short of the right edge, at the scrollbar gutter. **Fixed in Step 16** (the hairline moves onto an inner element, §4.7).
-  - **Footer socials at 320px in desktop Chrome wrap to 2 rows.** The 15px classic scrollbar gutter leaves 265px for 276px of icons; phones, with overlay scrollbars, show 1 row. **Look at it in Step 16:** for example `gap-0` below `sm` (252px), or accept the wrap.
   - Git on Windows warns about LF→CRLF. Add `.gitattributes` with `* text=auto eol=lf` if you want LF everywhere; ask first.
   - Delete the `.gitkeep` files as real files land in each folder (all folders that had one now have real files).
 
@@ -217,11 +234,11 @@ _Overwrite this section at the end of every step._
   Audit every animation against the allowed list (§7 table, including the copy-icon crossfade); remove anything else. Add the SVG favicon. Check focus rings and `::selection`.
   **Done when:** no `transition-all` and no `dangerouslySetInnerHTML` anywhere (`grep`); no layout animation anywhere (`grep` for `grid-template-rows`, `grid-rows`, width/height transitions finds nothing); reduced motion turns everything off; theme switch has no fade lag.
 
-- [ ] **Step 15: Performance pass**
+- [x] **Step 15: Performance pass**
   Read: §8
   **Done when:** `pnpm build` output shows initial JS **≤ 140 KB gzip, a hard cap** (owner, consolidation pass; it supersedes Step 8's 130). If it's over, code-split (§8); never raise the cap or trim the icon registries; no layout shift on load, theme switch or navigation; images have dimensions; record the bundle sizes in Handoff notes.
 
-- [ ] **Step 16: Responsive + accessibility QA**
+- [x] **Step 16: Responsive + accessibility QA**
   Read: §9
   Go through the whole checklist at every listed width in both themes; fix every issue found.
   Also do these (owner requests, added after Step 8):
@@ -273,6 +290,4 @@ _Overwrite this section at the end of every step._
 
 Visual tweaks to review with the owner at Step 16. Add a line here instead of doing it straight away.
 
-- **Projects grid:** a card with no image next to one with an image gets a tall empty area, because grid rows stretch. Seen with temporary data in Step 11, and again with the new placeholder data (Project One has an image; Two and Three don't).
-  - **Updated:** the links now live in the title row, so `items-start` no longer breaks link alignment. The cards would just end at different heights.
-  - Options: `items-start`, or accept it as is.
+_Nothing open. (Step 16: the Projects grid card-height idea was decided: keep equal heights.)_

@@ -32,7 +32,7 @@ export function ProjectLinks({ project, className }: ProjectLinksProps) {
             title={label}
             className={cn(
               "grid size-9 place-items-center rounded-full text-muted transition-colors hover:bg-subtle hover:text-fg",
-              "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg",
+              "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg focus-visible:transition-none",
             )}
           >
             <Icon aria-hidden className="size-4" />

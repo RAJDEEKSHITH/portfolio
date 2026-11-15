@@ -896,13 +896,14 @@ export function Container({ as: Tag = "div", className, children }: ContainerPro
     - `ul`: `-mx-1 p-1 scroll-px-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`, so a scroll container doesn't clip the 4px focus ring;
     - each link: `onFocus={(e) => e.currentTarget.scrollIntoView({ block: "nearest", inline: "nearest" })}`. Browsers don't scroll a *partly* visible focused element into view;
     - `<nav>` gets `min-w-0`, links `whitespace-nowrap`, and the toggle `shrink-0`.
-    - **Step 16 addition:** on every `pathname` change, scroll the active link (`aria-current="page"`) into view with `scrollIntoView({ block: "nearest", inline: "nearest" })`. Use the default instant behaviour, or `behavior: "smooth"` only when `prefers-reduced-motion` isn't `reduce`. It must never scroll the page vertically (the header is sticky at the top, so `block: "nearest"` is a no-op; verify it). This fixes "Resume" staying clipped at 320px after navigating to `/resume`.
+    - **Active link kept visible (Step 16):** a `ref` on the `ul` and `useEffect(…, [pathname])` (`pathname` from `useLocation`) call `querySelector('[aria-current="page"]')?.scrollIntoView({ block: "nearest", inline: "nearest" })` on every navigation, including the first render. **Instant** (the default behaviour), so there's nothing to switch off for reduced motion. The header is sticky at the top, so `block: "nearest"` never scrolls the page: verified that back-navigation still restores `scrollY` (600 → `/resume` → back → 600). This fixes "Resume" staying clipped at 320px after navigating to `/resume`.
+    - Muted links fade colour with `transition-colors`, which also animates `outline-color`, so each NavLink also gets `focus-visible:transition-none` and its ring appears at once (owner, Step 16; see §7).
 - Right: `<ThemeToggle />`.
 - Optional hairline `border-b border-border/60` only once scrolled, via an IntersectionObserver on a 1px sentinel at the top of `<main>` (no scroll listeners).
 
 ### 4.6 `ThemeToggle`
 
-- `button`, `type="button"`, `className="relative grid size-9 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-subtle hover:text-fg"` + focus ring.
+- `button`, `type="button"`, `className="relative grid size-9 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-subtle hover:text-fg"` + focus ring + `focus-visible:transition-none`.
 - `aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}`.
 - Sun + moon icons (`react-icons/lu`: `LuSun`, `LuMoon`) stacked in the same grid cell (`[grid-area:1/1]`), crossfaded with `transition-[opacity,transform] duration-300`; the inactive icon gets `scale-75 rotate-45 opacity-0`.
 
@@ -911,10 +912,13 @@ export function Container({ as: Tag = "div", className, children }: ContainerPro
 ```tsx
 export function Footer() {
   return (
-    <footer className="border-t border-border">
-      <Container className="flex flex-col-reverse items-center gap-4 py-8 sm:flex-row sm:justify-between">
-        <p className="text-sm text-muted">© {new Date().getFullYear()} {site.name}</p>
-        <SocialLinks size="sm" />
+    <footer>
+      {/* The hairline sits inside the Container so it spans exactly the text width */}
+      <Container>
+        <div className="flex flex-col-reverse items-center gap-4 border-t border-border py-8 sm:flex-row sm:justify-between">
+          <p className="text-sm text-muted">© {new Date().getFullYear()} {site.name}</p>
+          <SocialLinks size="sm" />
+        </div>
       </Container>
     </footer>
   );
@@ -923,7 +927,7 @@ export function Footer() {
 
 Nothing else — no nav columns, no quotes, no "built with".
 
-**Step 16 change (decided by the owner):** move `border-t border-border` off `<footer>` onto an inner element inside `<Container>`, e.g. `<Container><div className="flex flex-col-reverse items-center gap-4 border-t border-border py-8 sm:flex-row sm:justify-between">…</div></Container>`. Not on the Container itself (that would include its `px-5 sm:px-6`). The hairline then matches the text width exactly at every size and never reaches the scrollbar gutter.
+**The hairline lives on the inner `div`, not on `<footer>` (owner, Step 16).** Not on the Container either, which would include its `px-5 sm:px-6`. It matches the text width exactly at every size and never reaches the scrollbar gutter: at `sm+` its ends line up with the © text and the last social icon's box (e.g. 353 → 1073 at 1440px); stacked on mobile it spans the content column (20 → 300 at 320px).
 
 ### 4.8 `SocialLinks`
 
@@ -936,7 +940,8 @@ type SocialLinksProps = { size?: "sm" | "md"; className?: string };
 
 export function SocialLinks({ size = "md", className }: SocialLinksProps) {
   return (
-    <ul className={cn("flex flex-wrap items-center gap-1", className)}>
+    // sm (footer): no gap below 640px, so 7 icons (252px) fit one row even beside a desktop scrollbar at 320px
+    <ul className={cn("flex flex-wrap items-center", size === "sm" ? "gap-0 sm:gap-1" : "gap-1", className)}>
       {links.map(({ platform, url, label }) => {
         const meta = getSocial(platform);
         const Icon = meta.icon;
@@ -951,7 +956,7 @@ export function SocialLinks({ size = "md", className }: SocialLinksProps) {
               {...external}
               className={cn(
                 "grid size-9 place-items-center rounded-full text-muted transition-colors hover:bg-subtle hover:text-fg",
-                "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg",
+                "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg focus-visible:transition-none",
               )}
             >
               <Icon aria-hidden className={size === "sm" ? "size-4" : "size-4.5"} />
@@ -964,7 +969,7 @@ export function SocialLinks({ size = "md", className }: SocialLinksProps) {
 }
 ```
 
-Both sizes use a **36px** (`size-9`) hit area, the minimum tap target (CLAUDE.md, §9). `size` changes only the glyph: `sm` = 16px (`size-4`), `md` = 18px (`size-4.5`).
+Both sizes use a **36px** (`size-9`) hit area, the minimum tap target (CLAUDE.md, §9). `size` changes the glyph, `sm` = 16px (`size-4`), `md` = 18px (`size-4.5`), and the gap: `md` is always `gap-1`; **`sm` (footer) is `gap-0 sm:gap-1`** (owner, Step 16). At 320px a desktop browser's classic 15px scrollbar leaves 265px, and 7 icons with `gap-1` need 276px, so they wrapped; with `gap-0` they need 252px and stay on one row. The hit areas don't change.
 `flex-wrap` guarantees no overflow even with many socials at 320px.
 
 **Phase 3 acceptance**
@@ -1114,7 +1119,7 @@ Each block in `<Reveal step={n}>`:
    - if `site.avatar` is null, the image is omitted and the name/role block leads alone, flush with the content edge.
 2. **Bio** — `site.bio` paragraphs, each `<p><RichText text={paragraph} /></p>`, body scale, `mt-8 max-w-prose space-y-3` (the Reveal itself carries the classes).
 3. **Socials** — `mt-6`, `<SocialLinks className="-ml-2" />` (aligns icon glyphs with the text edge).
-4. **Experience** — `Section title="Experience"` (no header action). First `site.home.experienceLimit` of `sortExperience(experience)` as **`preview`** `ExperienceItem`s (§6.2), laid out exactly like the Experience page: `divide-y divide-border`, each item wrapped in `py-8 first:pt-0 last:pb-0` (the same visible rhythm; `last:pb-0` lets the link or the next section set the gap below). Below the list, a `Link` to `/experience` reading **"View all experience →"**, shown **whenever there is any experience** (the section itself hides when there is none), because tech, links and the remaining highlights only live on that page. Action-link classes (`ACTION`, shared with "View all projects →"): `mt-8 inline-block text-sm font-medium text-muted transition-colors hover:text-fg` + focus ring.
+4. **Experience** — `Section title="Experience"` (no header action). First `site.home.experienceLimit` of `sortExperience(experience)` as **`preview`** `ExperienceItem`s (§6.2), laid out exactly like the Experience page: `divide-y divide-border`, each item wrapped in `py-8 first:pt-0 last:pb-0` (the same visible rhythm; `last:pb-0` lets the link or the next section set the gap below). Below the list, a `Link` to `/experience` reading **"View all experience →"**, shown **whenever there is any experience** (the section itself hides when there is none), because tech, links and the remaining highlights only live on that page. Action-link classes (`ACTION`, shared with "View all projects →"): `mt-8 inline-block text-sm font-medium text-muted transition-colors hover:text-fg` + focus ring + `focus-visible:transition-none`.
 5. **Featured projects**: `Section title="Featured projects"` (no header action). It renders the first `site.home.projectLimit` (3) `featured` projects as a **list, not cards**, with the same rhythm as the Experience preview: `divide-y divide-border`, each row wrapped in `py-8 first:pt-0 last:pb-0`.
    - **`ProjectRow`** (`src/components/projects/ProjectRow.tsx`) is an `<article>` holding:
      - `ProjectHeader` (below);
@@ -1217,7 +1222,7 @@ Missing optional fields must render nothing: no empty rows, no stray "·", no em
   - **It renders only the links the project has,** packed together, in the fixed order GitHub (`FaGithub`) · YouTube (`FaYoutube`) · Live (`LuGlobe`). There are no placeholders and no shared slots.
   - With no links it renders nothing, so the title block gets the full row width.
   - The container is `ml-auto flex shrink-0 justify-end gap-1`. **The group sits flush right:** the last icon's 36px box always ends at the content's right edge. On Home that's the same x as the Experience date column; on a card it's the card's inner padding edge.
-  - **A link:** `<a>` with `grid size-9 place-items-center rounded-full text-muted transition-colors hover:bg-subtle hover:text-fg` plus the focus ring, `target="_blank" rel="noopener noreferrer"`, and `aria-label` and `title` like `"GitHub: Project One"` / `"Live site: Project One"`. The icon is `size-4 aria-hidden`.
+  - **A link:** `<a>` with `grid size-9 place-items-center rounded-full text-muted transition-colors hover:bg-subtle hover:text-fg` plus the focus ring + `focus-visible:transition-none`, `target="_blank" rel="noopener noreferrer"`, and `aria-label` and `title` like `"GitHub: Project One"` / `"Live site: Project One"`. The icon is `size-4 aria-hidden`.
 - **`ProjectHeader`** (`src/components/projects/ProjectHeader.tsx`) is the shared title row for `ProjectRow` and `ProjectCard`. Props: `project`, `headingAs?: "h2" | "h3"` (default `"h3"`).
   - The row is `flex items-start justify-between gap-3`.
   - **Left** is a `flex min-w-0 flex-wrap items-baseline gap-x-3` block. It holds the title heading (item-title scale, `min-w-0 break-words`) and the year (meta scale; it wraps below the title when space is short).
@@ -1328,7 +1333,7 @@ Durations: 150–200ms hover/press, 300ms state toggles (theme icon), 400–600m
 Polish: consistent focus rings; inverted `::selection`; SVG favicon monogram that reads on light and dark tabs (use a `prefers-color-scheme` media query inside the SVG).
 
 - **Favicon** (`public/favicon.svg`, done in Step 14): a 32×32 `rx=7` tile with one centred letter (`text-anchor="middle" dominant-baseline="central"`, system sans, 600 weight, size 20). Light scheme: tile `#18181b`, letter `#fafafa`; dark scheme (`@media (prefers-color-scheme: dark)` in the SVG's `<style>`): tile `#fafafa`, letter `#0a0a0a`. It follows the **browser/OS** scheme, not the site toggle. The placeholder letter is "Y" (from "Your Name"); the owner edits it by hand, like the static text in `index.html`.
-- **Focus rings:** `focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg` on every link, button and the skip link. On `text-muted` controls with `transition-colors`, the ring's colour fades in from `currentColor` to `fg` over 150ms (Tailwind's `transition-colors` includes `outline-color`); that's accepted.
+- **Focus rings:** `focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg` on every link, button and the skip link. **Rings appear instantly (owner, Step 16):** Tailwind's `transition-colors` includes `outline-color`, so on a `text-muted` control the ring used to fade from `currentColor` to `fg` over 150ms. Every `text-muted` control with `transition-colors` (NavLinks, `ThemeToggle`, `SocialLinks`, `ProjectLinks`, Home `ACTION`) also gets `focus-visible:transition-none`. Trade-off: while one of them is keyboard-focused, its hover colour change is instant too. `text-fg` controls (CopyEmail, RichText links, Resume buttons) don't need it: their outline colour doesn't change.
 - **`::selection`:** `bg-fg text-bg` (inverted in both themes).
 
 ### 7.1 Dawn/dusk theme transition — OPTIONAL, Step 19, branch `feat/theme-transition`
