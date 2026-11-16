@@ -12,16 +12,16 @@ import type { Site } from "@/types/content";
  * avatar: square image (≥ 160×160 webp, ≤ 30 KB). Changing or nulling it → update/delete the avatar preload line in index.html.
  */
 export const site = {
-  name: "Your Name",
+  name: "Rajdeekshith",
   role: "Full-Stack Engineer",
   tagline: "I build fast, thoughtful products for the web.",
   bio: ["Short paragraph about you. Keep it to 2–3 sentences."],
-  email: "you@example.com",
+  email: "rajdeekshith2912@gmail.com",
   location: "City, Country",
   avatar: "/avatar.webp", // null to hide
   url: "https://yourdomain.com",
   resume: {
-    driveUrl: "<paste Google Drive share link>",
+    driveUrl: "https://drive.google.com/file/d/17AymyEygpXDphkZ8cvz3ZORuqi6hEDQU/view?usp=drive_link",
     updated: "2026-11",
   },
   home: {

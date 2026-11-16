@@ -4,7 +4,7 @@ import type { Project } from "@/types/content";
 
 type ProjectRowProps = { project: Project };
 
-/** Home list row: header + description clamped to 2 lines. No image, no tech chips. */
+/** Home list row: header + description clamped to 2 lines. No highlights or tech chips (Projects page only). */
 export function ProjectRow({ project }: ProjectRowProps) {
   return (
     <article>

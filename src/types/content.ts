@@ -59,11 +59,10 @@ export type Project = {
   title: string;
   /** Rich text: **bold** and [label](url) */
   description: string;
-  year?: number;
+  /** Rich text bullets: **bold** and [label](url). Projects page only (2–4 recommended) */
+  highlights?: string[];
   tech?: string[];
   links?: ProjectLinkUrls;
-  /** path in /public, 16:9 webp, e.g. 1280×720 */
-  image?: string;
   featured?: boolean;
 };
 

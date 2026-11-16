@@ -10,47 +10,72 @@ Each step lists the `IMPLEMENTATION.md` sections to read. Read only those.
 
 _Overwrite this section at the end of every step._
 
-- **Last completed step:** Step 16 — Responsive + accessibility QA. Step 17 (Deploy prep + README) is next.
-- **Step 15 is not committed yet** (it changed only this file), so the next commit holds Steps 15 and 16 unless you split them. Step 15's results, kept here: initial JS 135.24 KB gzip at that point; against `pnpm preview` with mobile throttling (150ms RTT, 1.6 Mbps, CPU 4×): **CLS 0** on every cold load, FCP 1.19–1.56s, **LCP 1.56–1.96s** (8 of 10 loads under 1.8s); no layout shift on theme toggle; navigation shifts are input-flagged (CLS 0); lazy chunks warm on idle; images sized. **Not a Lighthouse score:** run `pnpm build && pnpm preview` → Chrome DevTools → Lighthouse → Mobile to get the real one.
-- **Owner decisions taken this step** (asked at the start; also in Owner decisions #6 below):
-  - **Footer socials at 320px:** `gap-0` below `sm` (footer only).
-  - **Ideas: Projects grid card heights:** accept equal heights (rows stay stretched). Removed from Ideas.
-  - **Focus-ring fade:** make rings instant (`focus-visible:transition-none` on the muted controls).
-- **Files changed:**
-  - **`src/components/layout/Header.tsx`:** `useLocation` + a `ref` on the nav `ul`; `useEffect(…, [pathname])` scrolls the `aria-current="page"` link into view (`block`/`inline: "nearest"`, instant). NavLinks get `focus-visible:transition-none`.
-  - **`src/components/layout/Footer.tsx`:** `<footer>` has no border; the hairline (`border-t border-border`) and the row classes moved to a `div` inside `<Container>`.
-  - **`src/components/ui/SocialLinks.tsx`:** the gap is `gap-0 sm:gap-1` for `size="sm"` (footer) and `gap-1` for `md` (Home, unchanged); links get `focus-visible:transition-none`.
-  - **`ThemeToggle.tsx`, `ProjectLinks.tsx`, `Home.tsx` (`ACTION`):** `focus-visible:transition-none`.
+- **Last completed step:** Step 17 — Deploy prep + README. All required steps (1–17) are done. Remaining steps are optional: 18 (Hallmark audit, only if you installed it), 19 (dawn/dusk theme transition, on `feat/theme-transition`, only if you ask), 20 (parked).
+- **Commit state:** the tree was clean at the start of this step, so Steps 15 + 16 are already in `1f1e4dc`. This step's changes are uncommitted.
+- **fix: /projects showed no projects (dev only; no code change).**
+  - **Root cause:** a stale Vite dev server, not the code. The `pnpm dev` on :5173 (started 13:36) was running while `src/pages/Projects.tsx` was rewritten at 13:45. Its Windows file watcher read the file mid-write (truncated, 0 bytes) and cached that, so it kept serving an **empty module**: `sourcesContent: [""]`, while `?t=<random>` returned the full file.
+    - With no default export, `lazyPage` gives React Router `Component: undefined`, so the route renders nothing: header and footer only, no error.
+    - A hard reload can't fix it, because the cache is on the server.
+    - The "restart" didn't replace that process; it's the known orphaned-Vite-child issue (see Session note), so 5173 kept serving the stale module.
+    - My earlier verification ran a fresh server on :5199, which read the complete file, so it passed.
+  - **Fix:** killed the stale process and started a fresh `pnpm dev`. Every other file edited in that change was checked against the old server, and only `Projects.tsx` was stale.
+  - **Verified in a headed (real, non-headless) Chrome window against `pnpm dev` on :5173,** at 320 and 1440px, light and dark, both after a full reload (`ignoreCache`) and after clicking "Projects" in the nav from Home (client-side, same document). All 8 runs show:
+    - the h1 "Projects" and 3 articles (Project One | Two | Three);
+    - wrapper opacity 1, nothing at opacity 0 or hidden, and the first item on screen;
+    - no overflow, and no console errors or warnings.
+
+    Screenshots checked. `pnpm build` + `pnpm lint` are clean; initial JS is unchanged at 135.50 KB gzip.
+  - **If a page goes blank in dev after edits:** stop every Vite process (`Get-NetTCPConnection -LocalPort 5173 -State Listen | % { Stop-Process -Id $_.OwningProcess -Force }`), then run `pnpm dev` again. Port 5173 is free now.
+- **Owner change after Step 17 (no step ticked): Projects page cards → list, project highlights, year/image removed.** Uncommitted, on top of Step 17's uncommitted changes.
+  - **Data shape:** `Project = { title; description; highlights?; tech?; links?; featured? }`. `image` and `year` are gone from the type, data, validator, components and docs. `highlights` are RichText bullets (2–4 recommended; the same writing rules as experience highlights).
+  - **Placeholder data:** Project One has 3 highlights (one **bold** metric, one inline link), Project Two has 1, Project Three has none.
+  - **Validator:** the project `image` check is gone; it now warns on an empty or whitespace-only `projects[i].highlights[j]`.
+  - **Files created:**
+    - `src/components/projects/ProjectItem.tsx`: the list item (title row, description, highlights, tech chips);
+    - `src/components/ui/BulletList.tsx`: the bullet list pulled out of `ExperienceItem`, so experience and project bullets share one style. It renders nothing for an empty array.
+  - **Files changed:**
+    - `src/pages/Projects.tsx`: `divide-y divide-border` + `py-8 first:pt-0`, the same as the Experience page;
+    - `ProjectHeader.tsx`: the year and its wrapper are gone; the title heading sits directly in the row;
+    - `ExperienceItem.tsx`: uses `BulletList` (same classes, same output);
+    - `ProjectRow.tsx`: comment only;
+    - `src/types/content.ts`, `src/data/projects.ts` (header + data), `src/lib/validate.ts`.
+  - **Files deleted:** `src/components/projects/ProjectCard.tsx`, `public/projects/` (the placeholder webp). The card border hover, the image zoom and the equal-heights grid went with them.
+  - **Home is unchanged:** the top 3 featured, title + `ProjectLinks` + a 2-line description, "View all projects →". The only visible difference is that the year no longer appears.
   - **Docs:**
-    - **`IMPLEMENTATION.md`:** §4.5 (the active-link effect as built, the ring note), §4.6, §4.7 (snippet + hairline measurements), §4.8 (snippet, the `sm` gap rule and why), §6.1 (`ACTION`), §6.4 (`ProjectLinks` link classes), §7 (focus rings: instant, the trade-off, which controls).
-    - **`CLAUDE.md`:** the Accessibility focus line adds the `focus-visible:transition-none` rule.
-- **Decision:** the nav effect uses the **instant** scroll (the spec allowed instant, or smooth when motion is allowed). Instant can't fight `ScrollRestoration` and needs no reduced-motion branch.
-- **§9 sweep, headless Chrome against dev.** Every width (320, 375, 414, 768, 1024, 1440, 1920), light and dark, all 5 routes. A probe on every page checks:
-  - horizontal overflow and any element outside the viewport;
-  - overlapping text boxes;
-  - header: one line, 56px tall, exactly one correct active link (none on the 404) at `font-weight: 500`, fully visible in the nav strip, toggle inside the header;
-  - footer: hairline = Container content box, `<footer>` has no border of its own, socials on one row, and at `sm+` the hairline ends line up with © and the last icon;
-  - icon-only controls ≥ 36×36.
+    - IMPLEMENTATION.md: §3.1, §3.6, §3.10 (+ a Phase 2 acceptance line), §5.8 (project highlights are rich text), §6.1, §6.2 (`BulletList`), §6.4 (rewritten as a list), §7 (image-zoom row and "card border" removed; the reduced-motion note now covers only the arrow nudge), §8 (no project images), §9 (the card check is replaced by "the Projects list matches the Experience page rhythm"), §11, §12;
+    - CLAUDE.md: the architecture comment (`ProjectItem`, `BulletList`), the RichText rule and the owner table (Add a project, a new Project highlights row);
+    - README: the quick reference, and the `public/projects/` row is gone from the launch table.
+  - **Verified (headless Chrome against `pnpm dev`, 320/768/1440 × light/dark):**
+    - Projects and Experience lists both have item padding `0/32px` then `32/32px`, h2 at 16px (18px from `sm`) weight 500, and 15px body and bullets;
+    - the last project icon's right edge = the Experience date column's right edge = the content edge (300 / 729 / 1073);
+    - bullets per project are 3/1/0, and Project Three shows no gap where highlights would be;
+    - no 4-digit years in the Projects list or Home's featured rows; 0 `<img>` on Projects; no horizontal overflow;
+    - Home: 2 featured rows, `line-clamp: 2`, no bullets or chips, "View all projects →" present, icons aligned with the date column.
 
-  Page-specific checks:
-  - **Experience:** tiles 40px below `sm`, 48px from `sm`; title, labels, chips, bullets and links share the content column's left edge; dates stack under the title below `sm` and are right-aligned from `sm`.
-  - **Projects:** 1 grid column below 640px, 2 from 640px; cards in a row have equal heights; icons flush right.
-  - **Home:** first N highlights (2 · 1) in the same 15px muted bullets and tiles as the Experience page (3 · 1); no chips or labels; "View all experience →" present; project icon right edge = Experience date right edge (300 at 320px, 1073 at 1440px).
-  - **Resume (placeholder):** only "Resume coming soon."
-
-  **Result: 0 issues** in both passes (pass A: default data; pass B: below).
-  - **Pass B (temporary `site.ts`**: an internal `[projects](/projects)` and an external `[blog](…)` link in the bio, plus a test Drive link; restored byte-for-byte with `cmp`):
-    - Resume at all 7 widths × 2 themes: the iframe is 278×393 at 320px up to 718×765 at 1440/1920 (≤ `85dvh`); buttons are 40px, two rows only at 320px; no overflow;
-    - rich-text links: the internal one navigates client-side (same document, no reload), external ones have `_blank` + `noopener noreferrer`, and all three show the 2px `fg` ring on Tab.
-  - **Nav at 320px** (real mouse clicks, no test scrolling): Resume → Projects → Experience → Home → Resume; the active link is fully visible every time (`scrollLeft` 27 or 0), `scrollY` 0. A direct load of `/resume` at 320px shows "Resume" fully (screenshot). **Back-navigation:** Home scrolled to 600 → Resume → back → `scrollY` 600 restored, so the effect never scrolls the page.
-  - **Footer at 320px on a desktop browser** (classic 15px scrollbar, `clientWidth` 305): socials 252px wide, **one row**. Before: 2 rows.
-  - **Focus:** at 1440px, 30 Tab stops on Home; every ring's colour is `fg` on the frame it's focused (no fade); hover still uses `transition-colors` when not focused. **Skip link:** first Tab shows it (119×36 at the top left); Enter → `#main`; next Tab → the first link in main.
-  - **200% zoom** (CSS viewport 720, 640 and 512px at 2× DPR) on Home, Experience, Projects and Resume: no overflow, no overlap; screenshot checked.
-  - **Reduced motion:** no element with an active animation.
-  - Console: only the expected Drive warning (none in pass B, which had a valid link).
-- **⚠ Not verifiable here (please check on a real iPhone):** iOS Safari, i.e. no white flash on load in dark mode, the sticky header while the toolbar collapses, and `85dvh` on the Resume preview with the toolbar shown/hidden. Everything it depends on (the inline theme script, `color-scheme`, `min-h-dvh`, `dvh` units) is in place.
-- `pnpm build` and `pnpm lint` are clean. **Bundle: 135.33 KB gzip initial JS** (`index` 130.18 + shared chunk 5.15), up 0.09 KB from the nav effect.
-- **Session note:** killing `pnpm dev` leaves the Vite child listening; free it with `Get-NetTCPConnection -LocalPort 5199 -State Listen | % { Stop-Process -Id $_.OwningProcess -Force }`. The port is free.
+    Screenshots checked at 320 light and 1440 dark. `grep` finds no project `image`/`year`/`ProjectCard`/`scale-[` left in `src/`.
+  - `pnpm build` + `pnpm lint` are clean. **Initial JS 135.50 KB gzip** (`index` 130.31 + shared chunk 5.19), up 0.17 KB.
+  - `public/` has an untracked PDF that I didn't add; I left it untouched. It isn't referenced anywhere (the resume comes from Google Drive).
+- **Files created:**
+  - **`vercel.json`:** the SPA rewrite from §10 (`/(.*)` → `/`). Vercel serves real files first, so `/assets/*`, `robots.txt` etc. are unaffected.
+  - **`public/_redirects`:** `/*  /index.html  200` for Netlify.
+  - **`public/robots.txt`:** allow all + `Sitemap: https://yourdomain.com/sitemap.xml`.
+  - **`public/sitemap.xml`:** the 4 routes (`/`, `/experience`, `/projects`, `/resume`) on `https://yourdomain.com`.
+- **Files changed:**
+  - **`package.json`:** `"packageManager": "pnpm@12.4.2"` (the local pnpm version), placed after `type`.
+  - **`pnpm-lock.yaml`:** pnpm 12 itself added a pin document at the top (`packageManagerDependencies: pnpm 12.4.2` + the `@pnpm/exe.*` platform binaries, +158 lines) because of the `packageManager` field. No app dependency changed. **Commit it with the rest**, or `pnpm install --frozen-lockfile` on the host may fail. Checked: `pnpm install --frozen-lockfile` passes locally ("Lockfile is up to date").
+  - **`README.md`:** rewritten as the owner guide: commands, the §11 quick reference, notes on current job / Home limits / skills / socials / nav, the Resume (Drive) steps, a "Files to replace before launch" table, deploy settings per host, links to CLAUDE.md / IMPLEMENTATION.md.
+- **Decisions:**
+  - **Both `vercel.json` and `public/_redirects`** are added (the step allowed "and/or"); each host ignores the other's file. Delete the one you don't need if you like.
+  - **robots/sitemap are static** with the placeholder domain (per §10), not generated from `site.url`. Replace `https://yourdomain.com` in both when you have a domain; the README table lists them.
+  - **Unknown URLs return HTTP 200** with the in-app 404 page (normal for an SPA rewrite). Not changed.
+  - **The duplicate `<meta name="description">`** (static one in `index.html` + each page's own, from Step 6) is **left as is**: the static one is the fallback for crawlers that don't run JS, and React's per-page tags are present for those that do. If you'd rather have exactly one per page, delete the static line in `index.html` (ask and I'll do it).
+- **Verified:**
+  - `pnpm build` and `pnpm lint` are clean. **Bundle unchanged: 135.33 KB gzip initial JS** (`index` 130.18 + shared 5.15).
+  - `dist/` contains `_redirects`, `robots.txt`, `sitemap.xml`.
+  - `pnpm preview` (port 4199): `/`, `/projects`, `/experience`, `/resume` and `/nope` all return 200 `text/html` with the app shell; `/robots.txt` (text/plain) and `/sitemap.xml` (text/xml) are served as files. Headless Chrome on a direct load of `/projects` renders `<h1>Projects</h1>` and the "Projects — Your Name" title. The preview server was stopped afterwards.
+- **⚠ Still to check on a real iPhone (from Step 16):** no white flash on load in dark mode, the sticky header while the toolbar collapses, and `85dvh` on the Resume preview.
+- **Earlier performance numbers (Step 15, for reference):** CLS 0 on every cold load, LCP 1.56–1.96s under mobile throttling. Not a Lighthouse score: run `pnpm build && pnpm preview` → Chrome DevTools → Lighthouse → Mobile for the real one.
+- **Session note:** killing `pnpm dev`/`preview` leaves the Vite child listening; free it with `Get-NetTCPConnection -LocalPort <port> -State Listen | % { Stop-Process -Id $_.OwningProcess -Force }`. Ports 5199 and 4199 are free.
 - **Owner decisions (final; don't reopen):**
   1. **After Step 8:** the three Step 8 deviations are accepted and documented (36px social icon links; `links: readonly Social[]`; `validate.ts` hot-accept). The 320px nav keeps the horizontal-scroll fallback (§4.5 has the real measurements).
   2. **Consolidation pass, bundle:** initial JS **≤ 140 KB gzip, a hard cap** (supersedes Step 8's 130 KB). If it's exceeded later, **code-split; never raise it again, and keep the full `SOCIAL_ICONS` and `TECH_ICONS` registries.** Recorded in §8, CLAUDE.md DoD #7 and Step 15.
@@ -61,7 +86,7 @@ _Overwrite this section at the end of every step._
      - the ExternalLink focus ring;
      - CopyEmail details;
      - `copy()` returning `Promise<boolean>`.
-  6. **Step 16:** footer socials `gap-0` below `sm`; the Projects grid keeps equal card heights in a row (no `items-start`); focus rings appear instantly (`focus-visible:transition-none` on `text-muted` controls with `transition-colors`).
+  6. **Step 16:** footer socials `gap-0` below `sm`; ~~the Projects grid keeps equal card heights in a row~~ (superseded after Step 17: the Projects page is now a list); focus rings appear instantly (`focus-visible:transition-none` on `text-muted` controls with `transition-colors`).
 - **Decisions / deviations from spec** (everything below is now reflected in IMPLEMENTATION.md):
   - **From Step 10:**
     - the duration span renders only when it is non-empty, so there is no stray "·";
@@ -69,7 +94,7 @@ _Overwrite this section at the end of every step._
     - the company `<a>`/`<span>` gets `min-w-0`, and the `<a>` gets a hover underline.
 
     `totalExperience` was added to `lib/dates.ts` for the page subtitle.
-  - **From Step 11:**
+  - **From Step 11** (the card, image and year parts are superseded after Step 17 by the Projects list, §6.4):
     - `ProjectCard` has `headingAs` (h2 on the Projects page);
     - "Live"/"Source" get `aria-label`s like "Live: <title>";
     - the image transition uses the spec easing plus `motion-reduce`;
@@ -107,10 +132,12 @@ _Overwrite this section at the end of every step._
   - a real `public/avatar.webp` to replace the placeholder (square, ≥ 160×160, ≤ 30 KB). If you set `avatar: null`, delete the preload line in `index.html`;
   - `public/og.png` (1200×630);
   - **your initial in `public/favicon.svg`** (the `<text>` currently says "Y");
-  - project images: replace the placeholder `public/projects/project-one.webp`;
+  - real project `highlights` (2–4 bullets each; projects have no images);
   - **real company logos in `public/logos/`** (square `.svg`/`.webp`). Replace `company-a.svg`, or drop `logo` to get a letter tile.
 
-  Placeholders are fine until then. The `<title>`, description and OG text in `index.html` are static placeholders, so edit them by hand to match `site.ts`.
+  - **your domain** in `site.url`, `public/robots.txt` and `public/sitemap.xml` (all say `https://yourdomain.com`).
+
+  Placeholders are fine until then. The `<title>`, description and OG text in `index.html` are static placeholders, so edit them by hand to match `site.ts`. The README has the full checklist ("Files to replace before launch").
 - **Known issues / TODO:**
   - **Avatar preload on every route:** `index.html` preloads `/avatar.webp` on `/experience`, `/projects` etc. too, where no avatar is shown (≤ 30 KB, and it's cached for Home). It's per spec (§2.5); a static `index.html` can't tell routes apart. Leave it unless Lighthouse flags "preloaded but not used".
   - **Unused JetBrains Mono:** `@fontsource-variable/jetbrains-mono` is imported (§2.2) but no component uses `font-mono`. Browsers never download it, so the only cost is ~1 KB of `@font-face` CSS. Keep it for code snippets later, or drop the import if you don't want it (ask first; it's in the spec).
@@ -205,6 +232,7 @@ _Overwrite this section at the end of every step._
 - [x] **Step 11: Project card + Projects page**
   Read: §6.4, §5.8
   **Done when:** 1 column on mobile, 2 on `sm+`; cards in a row line up; projects with no image or links still look intentional; no nested anchors; images lazy-load with no layout shift; **descriptions render through `RichText`** (`**bold**` and `[label](url)` work, broken markers show as text); the page has its `<meta name="description">`.
+  _Superseded after Step 17: the Projects page is now a list like the Experience page (`ProjectItem`, §6.4); no cards, images or year._
 
 - [x] **Step 12: Home page**
   Read: §6.1, §6.2 (accordion part)
@@ -248,7 +276,7 @@ _Overwrite this section at the end of every step._
   - **Review the "Ideas / later" list** at the bottom of this file with the owner; do only the items they pick.
   **Done when:** every §9 box is satisfied (including the new ones: tap targets ≥ 36px, tile alignment, Home showing the first N highlights in the Experience page style, project link icon columns, rich-text links); the two owner requests above are done and checked; the footer-wrap decision is made; list anything still imperfect in Handoff notes.
 
-- [ ] **Step 17: Deploy prep + README**
+- [x] **Step 17: Deploy prep + README**
   Read: §10, §11
   `vercel.json` and/or `public/_redirects`, `robots.txt`, `sitemap.xml`, `packageManager` field, README with the owner quick reference.
   **Done when:** `pnpm build && pnpm preview` works; deep-linking `/projects` on preview works; README explains how to edit content.
@@ -276,8 +304,8 @@ _Overwrite this section at the end of every step._
 
 - [ ] **Step 20 (optional): Adaptive Home for zero experience** (parked; don't build)
   - **Scope:**
-    - project highlights;
-    - a "detailed" `ProjectCard` variant;
+    - ~~project highlights~~ (done after Step 17: `Project.highlights`, shown on the Projects page);
+    - a "detailed" Home project variant: reuse `ProjectItem` (§6.4) with `headingAs="h3"` instead of building a new one;
     - Home goes projects-first when `experience.length === 0`;
     - `getVisibleNav()` hides empty pages;
     - an `/experience` redirect.
@@ -290,4 +318,4 @@ _Overwrite this section at the end of every step._
 
 Visual tweaks to review with the owner at Step 16. Add a line here instead of doing it straight away.
 
-_Nothing open. (Step 16: the Projects grid card-height idea was decided: keep equal heights.)_
+_Nothing open._

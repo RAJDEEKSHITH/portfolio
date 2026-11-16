@@ -63,10 +63,10 @@ export function validateContent(): void {
     problems.push(`projects: duplicate title "${title}" (React key collision)`),
   );
 
-  work.forEach(({ title, image, links: projectLinks }, i) => {
-    if (image !== undefined && !isPath(image)) {
-      problems.push(`projects[${i}] (${title}): image "${image}" must start with "/" or "http"`);
-    }
+  work.forEach(({ title, highlights, links: projectLinks }, i) => {
+    highlights?.forEach((h, j) => {
+      if (h.trim() === "") problems.push(`projects[${i}] (${title}): highlights[${j}] is empty (remove it or add text)`);
+    });
     Object.entries(projectLinks ?? {}).forEach(([type, url]) => {
       if (url.trim() === "") problems.push(`projects[${i}] (${title}): links.${type} is empty (remove the key or add a URL)`);
     });

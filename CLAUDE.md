@@ -75,9 +75,9 @@ src/
   context/       # ThemeContext.tsx
   components/
     layout/      # RootLayout, Header, Footer, Container
-    ui/          # ThemeToggle, SocialLinks, TechChip, Section, StatusBadge, ExternalLink, CopyEmail, Reveal, PageHeader, RichText
+    ui/          # ThemeToggle, SocialLinks, TechChip, Section, StatusBadge, ExternalLink, CopyEmail, Reveal, PageHeader, RichText, BulletList
     experience/  # ExperienceItem, CompanyLogo
-    projects/    # ProjectCard, ProjectRow, ProjectHeader, ProjectLinks
+    projects/    # ProjectItem, ProjectRow, ProjectHeader, ProjectLinks
   pages/         # Home, Experience, Projects, Resume, NotFound
   router.tsx
   main.tsx
@@ -88,7 +88,7 @@ public/          # avatar.webp, favicon.svg, og.png, robots.txt, logos/ (company
 - Import alias: `@/` → `src/` (e.g. `import { site } from "@/data/site"`).
 - Components never hard-code personal content (names, links, dates, bullets). Read from `src/data/`.
 - Derived values (sorting, "Present", durations, "Working" badge) are computed in `src/lib/`, never stored in data.
-- Owner-written text with formatting (bio, experience highlights, project descriptions) is rendered with `<RichText>`: only `**bold**` and `[label](url)`. Never `dangerouslySetInnerHTML`, never auto-bold numbers.
+- Owner-written text with formatting (bio, experience highlights, project descriptions and highlights) is rendered with `<RichText>`: only `**bold**` and `[label](url)`. Never `dangerouslySetInnerHTML`, never auto-bold numbers.
 - One component per file. Pages use `export default` (needed for lazy routes); everything else uses named exports.
 
 ## TypeScript rules
@@ -158,8 +158,9 @@ public/          # avatar.webp, favicon.svg, og.png, robots.txt, logos/ (company
 | Company logo | `public/logos/` + `src/data/experience.ts` | Put a square `.svg`/`.webp` in `public/logos/`, set `logo: "/logos/name.svg"`. No logo → letter tile. |
 | Links under a job | `src/data/experience.ts` | `links: [{ label: "Case study", url: "https://…" }]`. Shown after the bullets (Experience page only). |
 | Highlights on Home | `src/data/experience.ts` + `src/data/site.ts` | Order highlights by importance; the first N (`site.home.highlightLimit`) appear on Home. |
-| Bold / links in text | bio, highlights, project descriptions | `**bold**` and `[label](url)` only. Lead with the result; at most **one** bold metric/outcome per bullet; not every bullet needs one; real numbers only. |
-| Add a project | `src/data/projects.ts` | Append an object. `featured: true` shows it on Home (first `site.home.projectLimit`). |
+| Bold / links in text | bio, experience + project highlights, project descriptions | `**bold**` and `[label](url)` only. Lead with the result; at most **one** bold metric/outcome per bullet; not every bullet needs one; real numbers only. |
+| Add a project | `src/data/projects.ts` | Append `{ title, description, highlights?, tech?, links?, featured? }`. Array order = display order. `featured: true` shows it on Home (first `site.home.projectLimit`). Projects have no image and no year. |
+| Project highlights | `src/data/projects.ts` | `highlights: ["…"]`, 2–4 bullets recommended, shown on the Projects page only (Home shows the description). Same writing rules as experience highlights (row above). |
 | Project links | `src/data/projects.ts` | `links: { github?, youtube?, live? }`, all optional; shown as icons in that order. Omit a key rather than leaving `""`. |
 | Add/remove a social | `src/data/socials.ts` | Add/remove `{ platform, url }`. Icon picked from `platform` (autocompletes). Unknown platform → generic link icon. |
 | Add a skill | `src/data/skills.ts` | Add a string like `"Next.js"` to a group. Known names get an icon; unknown → text-only chip. |

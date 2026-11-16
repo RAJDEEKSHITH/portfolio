@@ -1,6 +1,6 @@
 import { CompanyLogo } from "@/components/experience/CompanyLogo";
+import { BulletList } from "@/components/ui/BulletList";
 import { ExternalLink } from "@/components/ui/ExternalLink";
-import { RichText } from "@/components/ui/RichText";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { TechChip } from "@/components/ui/TechChip";
 import { site } from "@/data/site";
@@ -34,18 +34,7 @@ export function ExperienceItem({ item, preview = false, headingAs: Heading = "h3
   const duration = preview ? "" : formatDuration(start, end);
 
   // Preview: bullets sit right under the header (no label), same list styling as the full item
-  const bullets = (
-    <ul className={cn("space-y-2 text-[15px] leading-relaxed text-muted", preview ? "mt-4" : "mt-2")}>
-      {highlights.map((h) => (
-        <li
-          key={h}
-          className="relative pl-4 before:absolute before:top-[0.7em] before:left-0 before:size-1 before:rounded-full before:bg-muted/60"
-        >
-          <RichText text={h} />
-        </li>
-      ))}
-    </ul>
-  );
+  const bullets = <BulletList items={highlights} className={preview ? "mt-4" : "mt-2"} />;
 
   return (
     <article className="flex gap-4">
