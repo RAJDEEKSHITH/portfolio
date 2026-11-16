@@ -35,7 +35,7 @@ If a step can't be finished, leave it unticked, write exactly where it stopped i
 - **React 19** + **TypeScript** (strict) on **Vite**.
 - **Tailwind CSS v4** (≥ 4.3), CSS-first config via `@import "tailwindcss"`, `@theme`, `@custom-variant` in `src/index.css`. There is **no `tailwind.config.js`** — do not create one.
 - **react-router-dom** (v7) data router: `createBrowserRouter` + `RouterProvider`.
-- **react-icons** for social + tech icons (named imports only).
+- **react-icons** for social and project-link icons (named imports only). Skills and tech are icon-free `TechTag`s.
 - **@fontsource-variable/** packages for self-hosted fonts.
 
 ### Explicitly NOT used
@@ -75,7 +75,7 @@ src/
   context/       # ThemeContext.tsx
   components/
     layout/      # RootLayout, Header, Footer, Container
-    ui/          # ThemeToggle, SocialLinks, TechChip, Section, StatusBadge, ExternalLink, CopyEmail, Reveal, PageHeader, RichText, BulletList
+    ui/          # ThemeToggle, SocialLinks, TechTag, Section, StatusBadge, ExternalLink, CopyEmail, Reveal, PageHeader, RichText, BulletList
     experience/  # ExperienceItem, CompanyLogo
     projects/    # ProjectItem, ProjectRow, ProjectHeader, ProjectLinks
   pages/         # Home, Experience, Projects, Resume, NotFound
@@ -114,13 +114,23 @@ public/          # avatar.webp, favicon.svg, og.png, robots.txt, logos/ (company
 - **Container:** all page content sits inside `<Container>` = `mx-auto w-full max-w-3xl px-5 sm:px-6`. No other content max-widths.
 - **Type scale (do not invent sizes):**
   - Page title: `text-3xl sm:text-4xl font-semibold tracking-tight`
-  - Section heading: `text-lg font-semibold tracking-tight`
+  - Section heading (`Section` h2): `text-xl sm:text-2xl font-semibold tracking-tight text-fg`. Clearly smaller than the page title, clearly larger than item titles
   - Item title: `text-base sm:text-lg font-medium`
   - Body: `text-[15px] leading-relaxed text-muted`
   - Meta (dates, locations): `text-sm text-muted tabular-nums`
-  - Chips/badges: `text-xs font-medium`
-- **Spacing:** sections `mt-16 sm:mt-20`; list items `space-y-8` or `divide-y` + `py-8`. Tailwind scale only.
-- **Radius:** `rounded-lg` cards/buttons, `rounded-full` chips/badges/icon buttons.
+  - Badges: `text-xs font-medium`
+  - Skill group label: `text-sm font-semibold text-fg` (`sm:pt-1` to sit on the first tag row's text line)
+  - Tech tags (`TechTag`): `text-[13px] font-medium leading-6 text-fg/85`, `px-2 py-0.5`, in `flex flex-wrap gap-1.5`
+- **Spacing rule: inside an item < between items < between sections**, on every page. Use these values; no one-off values (Tailwind scale only):
+  - Main: `pt-8 sm:pt-12 pb-16 sm:pb-20`.
+  - Between sections (`Section`): `mt-14 sm:mt-16`; section heading → content `mb-5 sm:mb-6`.
+  - Between list items (Home, Experience, Projects): `divide-y divide-border`, each item `py-6 first:pt-0 last:pb-0`.
+  - Inside an item: title row → description `mt-1.5`; description → tags `mt-3`; tags/description → bullets `mt-3`; between bullets `space-y-1.5`; bullets → links `mt-3`. A small label → its content (`Technologies & Tools`, `What I've done`) `mt-1.5`.
+  - Hero: avatar row → bio `mt-6`; bio → socials `mt-5`.
+  - Skills: rows `gap-y-3` from `sm`; below `sm` the label sits above its tags (`gap-1.5`), groups `gap-y-5`; tags `gap-1.5`.
+  - "View all … →" link: `mt-5` below its list.
+  - Page header → content (`PageHeader`): `mb-10 sm:mb-12`; Resume buttons → preview `mt-5 sm:mt-6`.
+- **Radius:** `rounded-lg` cards/buttons, `rounded-md` tags (`TechTag`), `rounded-full` badges/icon buttons.
 - Icon buttons/links: hit area ≥ `size-9` (36px), always with `aria-label`.
 
 ## Responsiveness rules (strict)
@@ -130,7 +140,7 @@ public/          # avatar.webp, favicon.svg, og.png, robots.txt, logos/ (company
 - No fixed pixel widths on content. Flex children holding text get `min-w-0`; long strings get `break-words` or `truncate`.
 - Title/date rows: `flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between`.
 - Images always have `width`/`height` (or an `aspect-*` wrapper); below-the-fold images get `loading="lazy" decoding="async"`.
-- Use `min-h-dvh`, not `min-h-screen`. Lists of chips/icons/buttons always `flex-wrap`.
+- Use `min-h-dvh`, not `min-h-screen`. Lists of tags/icons/buttons always `flex-wrap`.
 
 ## Animation rules (strict)
 
@@ -164,11 +174,11 @@ public/          # avatar.webp, favicon.svg, og.png, robots.txt, logos/ (company
 | Project highlights | `src/data/projects.ts` | `highlights: ["…"]`, 2–4 bullets recommended, shown on the Projects page only (Home shows the description). Same writing rules as experience highlights (row above). |
 | Project links | `src/data/projects.ts` | `links: { github?, youtube?, live? }`, all optional; shown as icons in that order. Omit a key rather than leaving `""`. |
 | Add/remove a social | `src/data/socials.ts` | Add/remove `{ platform, url }`. Icon picked from `platform` (autocompletes). Unknown platform → generic link icon. |
-| Add a skill | `src/data/skills.ts` | Add a string like `"Next.js"` to a group. Known names get an icon; unknown → text-only chip. |
+| Add a skill | `src/data/skills.ts` | Add a string like `"Next.js"` to a group. Skills and tech (projects, jobs) render as tags automatically (`TechTag`); no icons, so any name works. Group names up to about "Databases & Caching" fit on one line. |
 | Name/bio/email | `src/data/site.ts` | Edit fields. |
 | Update resume | Google Drive + `src/data/site.ts` | Upload a new version of the same Drive file (Manage versions); the link stays the same. Bump `site.resume.updated`. New file → paste its share link into `site.resume.driveUrl`. |
 | Nav items | `src/data/navigation.ts` | Edit array. |
-| Support a new icon | `src/lib/icons.ts` | Add one entry to `SOCIAL_ICONS` or `TECH_ICONS`. |
+| Support a new social icon | `src/lib/icons.ts` | Add one entry to `SOCIAL_ICONS`. (Skills have no icons.) |
 | Favicon letter | `public/favicon.svg` | Change the letter inside `<text>…</text>` to your initial. |
 
 If you change a data shape, update `src/types/content.ts`, the comment header in the data file, and `IMPLEMENTATION.md` §3.
@@ -181,7 +191,7 @@ If you change a data shape, update `src/types/content.ts`, the comment header in
 4. Keyboard-navigable with visible focus.
 5. No new dependencies without approval; no raw color classes in components.
 6. Content changes still only require editing `src/data/`.
-7. Initial JS ≤ **140 KB gzip** (hard cap). If a change exceeds it, code-split; never raise the cap or trim the icon registries.
+7. Initial JS ≤ **140 KB gzip** (hard cap). If a change exceeds it, code-split; never raise the cap or trim `SOCIAL_ICONS`.
 
 ## Style
 

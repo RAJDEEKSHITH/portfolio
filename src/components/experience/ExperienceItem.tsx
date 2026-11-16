@@ -2,7 +2,7 @@ import { CompanyLogo } from "@/components/experience/CompanyLogo";
 import { BulletList } from "@/components/ui/BulletList";
 import { ExternalLink } from "@/components/ui/ExternalLink";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { TechChip } from "@/components/ui/TechChip";
+import { TechTag } from "@/components/ui/TechTag";
 import { site } from "@/data/site";
 import { cn } from "@/lib/cn";
 import { formatDuration, formatRange, isCurrent } from "@/lib/dates";
@@ -34,7 +34,7 @@ export function ExperienceItem({ item, preview = false, headingAs: Heading = "h3
   const duration = preview ? "" : formatDuration(start, end);
 
   // Preview: bullets sit right under the header (no label), same list styling as the full item
-  const bullets = <BulletList items={highlights} className={preview ? "mt-4" : "mt-2"} />;
+  const bullets = <BulletList items={highlights} className={preview ? "mt-3" : "mt-1.5"} />;
 
   return (
     <article className="flex gap-4">
@@ -69,11 +69,11 @@ export function ExperienceItem({ item, preview = false, headingAs: Heading = "h3
         </div>
 
         {tech.length > 0 && (
-          <div className="mt-4">
+          <div className="mt-3">
             <p className={LABEL}>Technologies &amp; Tools</p>
-            <ul className="mt-2 flex flex-wrap gap-2">
+            <ul className="mt-1.5 flex flex-wrap gap-1.5">
               {tech.map((name) => (
-                <TechChip key={name} name={name} />
+                <TechTag key={name} name={name} />
               ))}
             </ul>
           </div>
@@ -82,13 +82,13 @@ export function ExperienceItem({ item, preview = false, headingAs: Heading = "h3
           (preview ? (
             bullets
           ) : (
-            <div className="mt-4">
+            <div className="mt-3">
               <p className={LABEL}>What I&apos;ve done</p>
               {bullets}
             </div>
           ))}
         {links.length > 0 && (
-          <ul className="mt-4 flex flex-wrap gap-x-4 gap-y-2">
+          <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
             {links.map((link) => (
               <li key={`${link.label}-${link.url}`}>
                 <ExternalLink href={link.url}>{link.label}</ExternalLink>

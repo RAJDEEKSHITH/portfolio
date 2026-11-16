@@ -12,7 +12,7 @@ export function BulletList({ items, className }: BulletListProps) {
   if (items.length === 0) return null;
 
   return (
-    <ul className={cn("space-y-2 text-[15px] leading-relaxed text-muted", className)}>
+    <ul className={cn("space-y-1.5 text-[15px] leading-relaxed text-muted", className)}>
       {items.map((item) => (
         <li
           key={item}

@@ -38,11 +38,11 @@ Starting point: Vite React + TypeScript project with Tailwind v4 already configu
 | Fonts | `@fontsource-variable/*` (self-hosted) | No third-party request, no layout shift. |
 | Colors | Six semantic CSS-variable tokens | Components can't drift between themes. |
 | Resume | Google Drive share link (`site.resume.driveUrl`); Drive preview iframe on all sizes + Download / Open in Google Drive buttons | Updating = upload a new version in Drive, the link never changes. Drive's viewer works on phones, unlike an embedded PDF (iOS shows only page 1; Android Chrome doesn't render it inline). |
-| Tech chips | Icon + label, monochrome | More readable than icon-only tiles; black brand icons (Next.js, Vercel) don't vanish in dark mode. |
+| Tech tags | Compact static tags (`TechTag`, §5.4), no icons | Scannable and calm; subtle border on the `subtle` fill; any skill name works. |
 | Formatted text | `**bold**` + `[label](url)` only, via a tiny tokenizer (`<RichText>`, §5.8) | Enough to highlight one metric or link a write-up. No Markdown library, no `dangerouslySetInnerHTML`, unsafe link schemes fall back to text. |
 | Company logos | Optional `logo`; every job always shows a tile (logo or letter) | Rows align whether or not a logo exists. |
 | Experience on Home | Preview: the same item design as the Experience page, showing the header plus the first `site.home.highlightLimit` highlights, and an always-visible "View all experience →" link (§6.1, §6.2) | Home stays scannable with no hidden UI or layout animation; the full details (tech, links, every highlight) live on `/experience`. |
-| Bundle budget | Initial JS ≤ **140 KB gzip, hard cap** (§8) | Keeps the full icon registries. Over the cap → code-split, never raise it again. |
+| Bundle budget | Initial JS ≤ **140 KB gzip, hard cap** (§8) | Keeps the full social icon registry (skills and tech are icon-free `TechTag`s since the post-Step-20 passes). Over the cap → code-split, never raise it again. |
 
 ---
 
@@ -586,6 +586,8 @@ The placeholder data covers every case the layout has to handle:
 
 Projects have **no image and no year** (both removed after Step 17).
 
+**Shipped data (real-content pass, after Step 20):** `src/data/projects.ts` now holds the owner's 3 real projects (Hookrelay, DeployBench, Storiffy), all `featured`, 4 highlights each ordered by importance, and `src/data/experience.ts` is `[]` (zero-experience mode, §6.7). The sample above stays as the schema example. Their `links` are placeholders (`yourhandle` / `your-demo-id` / `example.com`, marked TODO in the file) until the owner pastes the real URLs.
+
 **`src/lib/projectLinks.ts`** (pure helpers):
 - `PROJECT_LINK_TYPES = ["github", "youtube", "live"] as const`, the fixed display order;
 - `PROJECT_LINK_LABELS`: GitHub / YouTube / Live site;
@@ -598,17 +600,26 @@ Projects have **no image and no year** (both removed after Step 17).
 import type { SkillGroup } from "@/types/content";
 
 /**
- * Skills by category. Add/remove strings freely.
- * Names match icons case/punctuation-insensitively ("Next.js" == "nextjs").
- * Unknown names render as text-only chips.
+ * Skills by category. Add/remove strings freely; group order and item order = display order.
+ * Every skill renders as a TechTag (a compact tag, no icon), so any name works.
  */
 export const skills = [
-  { group: "Languages", items: ["JavaScript", "TypeScript", "Python"] },
-  { group: "Frontend", items: ["React", "Next.js", "Tailwind CSS", "Zustand", "Three.js", "GSAP"] },
-  { group: "Backend", items: ["Node.js", "Express", "MongoDB", "PostgreSQL"] },
-  { group: "Tools", items: ["Git", "Docker", "Figma", "Postman", "Vercel"] },
+  { group: "Languages", items: ["TypeScript", "JavaScript", "Python", "C++"] },
+  {
+    group: "Backend",
+    items: ["Node.js", "Express.js", "FastAPI", "BullMQ", "Server-Sent Events", "WebSockets", "gRPC", "Vitest"],
+  },
+  { group: "AI & LLMs", items: ["LangChain", "LangGraph", "RAG", "Pinecone", "Qdrant", "MCP"] },
+  { group: "Databases & Caching", items: ["PostgreSQL", "MongoDB", "Redis", "Drizzle ORM"] },
+  { group: "Cloud & DevOps", items: ["AWS", "Docker", "Nginx", "CI/CD", "GitHub Actions", "Git", "Grafana k6"] },
+  {
+    group: "Frontend",
+    items: ["React", "Next.js", "Zustand", "TanStack Query", "Redux Toolkit", "Tailwind CSS", "HTML", "CSS"],
+  },
 ] satisfies SkillGroup[];
 ```
+
+Group labels can be long: "Databases & Caching" stays on one line in the `10rem` label column from `sm` (§6.1), and at 320px the label sits above its tags.
 
 ### 3.8 `src/lib/dates.ts`
 
@@ -676,19 +687,16 @@ export const totalExperience = (list: readonly Pick<Experience, "start">[]): str
 import type { IconType } from "react-icons";
 import {
   FaXTwitter, FaLinkedinIn, FaGithub, FaYoutube, FaInstagram, FaMedium, FaDiscord,
-  FaDev, FaStackOverflow, FaAws, FaEnvelope, FaGlobe, FaLink,
+  FaDev, FaStackOverflow, FaEnvelope, FaGlobe, FaLink,
 } from "react-icons/fa6";
 import {
   SiLeetcode, SiCodeforces, SiCodechef, SiGeeksforgeeks, SiHackerrank, SiHashnode, SiKaggle,
-  SiReact, SiNextdotjs, SiTypescript, SiJavascript, SiPython, SiTailwindcss, SiNodedotjs,
-  SiExpress, SiMongodb, SiPostgresql, SiDocker, SiGit, SiFigma, SiVercel, SiThreedotjs,
-  SiGreensock, SiFramer, SiRedux, SiPostman, SiVite, SiPrisma, SiRedis, SiGraphql,
 } from "react-icons/si";
 
 type SocialMeta = { icon: IconType; label: string };
 
-/** "Next.js" → "nextjs", "Tailwind CSS" → "tailwindcss", "C++" → "c++" */
-export const toKey = (s: string): string => s.toLowerCase().replace(/[^a-z0-9+#]/g, "");
+/** "LinkedIn" → "linkedin", "Dev.to" → "devto", "Stack Overflow" → "stackoverflow" */
+const toKey = (s: string): string => s.toLowerCase().replace(/[^a-z0-9+#]/g, "");
 
 export const SOCIAL_ICONS = {
   x: { icon: FaXTwitter, label: "X" },
@@ -717,40 +725,13 @@ export type SocialPlatform = keyof typeof SOCIAL_ICONS | (string & {});
 
 const FALLBACK_SOCIAL: SocialMeta = { icon: FaLink, label: "Link" };
 
-export const TECH_ICONS: Record<string, IconType> = {
-  react: SiReact, reactjs: SiReact,
-  nextjs: SiNextdotjs, next: SiNextdotjs,
-  typescript: SiTypescript, ts: SiTypescript,
-  javascript: SiJavascript, js: SiJavascript,
-  python: SiPython,
-  tailwindcss: SiTailwindcss, tailwind: SiTailwindcss,
-  nodejs: SiNodedotjs, node: SiNodedotjs,
-  express: SiExpress, expressjs: SiExpress,
-  mongodb: SiMongodb, mongo: SiMongodb,
-  postgresql: SiPostgresql, postgres: SiPostgresql,
-  docker: SiDocker,
-  git: SiGit,
-  figma: SiFigma,
-  vercel: SiVercel,
-  threejs: SiThreedotjs,
-  gsap: SiGreensock,
-  framermotion: SiFramer, framer: SiFramer, motion: SiFramer,
-  redux: SiRedux,
-  postman: SiPostman,
-  vite: SiVite,
-  prisma: SiPrisma,
-  redis: SiRedis,
-  graphql: SiGraphql,
-  aws: FaAws,
-};
-
 export const getSocial = (platform: string): SocialMeta =>
   (SOCIAL_ICONS as Record<string, SocialMeta>)[toKey(platform)] ?? FALLBACK_SOCIAL;
 
-export const getTechIcon = (name: string): IconType | null => TECH_ICONS[toKey(name)] ?? null;
-
 export const isKnownPlatform = (platform: string): boolean => toKey(platform) in SOCIAL_ICONS;
 ```
+
+**No tech icons (owner, real-content pass after Step 20):** `TECH_ICONS` and `getTechIcon` are deleted, and skills and tech render as icon-free `TechTag`s (§5.4). `icons.ts` now holds only the social registry; `toKey` is module-private. Project link icons (`FaGithub`, `FaYoutube`, `LuGlobe`) live in `ProjectLinks` (§6.4).
 
 > **Verify icon exports on first build.** react-icons occasionally renames/removes brand icons. If `pnpm build` reports a missing export, replace it with the closest available icon or delete that entry — the fallbacks keep the UI working. Never `import * as`.
 
@@ -778,7 +759,7 @@ Checks:
 - [ ] Wrong `mode: "remote"` (lowercase) → TS error in the data file.
 - [ ] New job with `end: null` anywhere in the array → appears first with "Working".
 - [ ] `{ platform: "foo", url }` → generic link icon + dev warning, no crash.
-- [ ] `"Zustand"` in skills → text-only chip; `"Next.js"` → chip with icon.
+- [ ] Any skill name (`"Zustand"`, `"Next.js"`, `"Server-Sent Events"`) → a `TechTag`, no icon.
 - [ ] `logo: "logo.png"` or `links: [{ label: "x", url: "" }]` → one dev warning each, no crash.
 - [ ] A project highlight `""` or `"  "` → one dev warning, no crash.
 
@@ -874,7 +855,7 @@ export function RootLayout({ error = false }: RootLayoutProps) {
         Skip to content
       </a>
       <Header />
-      <main id="main" className="flex-1 pb-20 pt-10 sm:pt-16">
+      <main id="main" className="flex-1 pt-8 pb-16 sm:pt-12 sm:pb-20">
         <div key={pathname} className="animate-fade-in motion-reduce:animate-none">
           {error ? <NotFound /> : <Outlet />}
         </div>
@@ -941,6 +922,8 @@ export function Footer() {
 
 Nothing else — no nav columns, no quotes, no "built with".
 
+**Social links are in BOTH the Home hero and the footer, on purpose (owner). Don't "deduplicate" them.** The hero row (§6.1) is the primary contact on Home. The footer is the **only** social access on every other page (Experience, Projects, Resume, 404), which have no hero. Removing either copy leaves those pages, or Home's first screen, without socials.
+
 **The hairline lives on the inner `div`, not on `<footer>` (owner, Step 16).** Not on the Container either, which would include its `px-5 sm:px-6`. It matches the text width exactly at every size and never reaches the scrollbar gutter: at `sm+` its ends line up with the © text and the last social icon's box (e.g. 353 → 1073 at 1440px); stacked on mobile it spans the content column (20 → 300 at 320px).
 
 ### 4.8 `SocialLinks`
@@ -1003,10 +986,10 @@ type SectionProps = { title?: string; action?: ReactNode; className?: string; ch
 
 export function Section({ title, action, className, children }: SectionProps) {
   return (
-    <section className={cn("mt-16 sm:mt-20", className)}>
+    <section className={cn("mt-14 sm:mt-16", className)}>
       {title && (
-        <div className="mb-6 flex items-baseline justify-between gap-4">
-          <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+        <div className="mb-5 flex items-baseline justify-between gap-4 sm:mb-6">
+          <h2 className="text-xl font-semibold tracking-tight text-fg sm:text-2xl">{title}</h2>
           {action}
         </div>
       )}
@@ -1015,6 +998,24 @@ export function Section({ title, action, className, children }: SectionProps) {
   );
 }
 ```
+
+**Heading hierarchy (owner):** three clearly distinct levels: page title `h1` (`text-3xl sm:text-4xl`, 30/36px) > section heading `h2` (`text-xl sm:text-2xl`, 20/24px, `text-fg`) > item title (`text-base sm:text-lg`, 16/18px). The section heading is visibly larger than the item titles under it, so Home reads as clear sections.
+
+**Spacing rule (owner): inside an item < between items < between sections**, on every page, with one set of values (CLAUDE.md, "Spacing rule"):
+
+| Gap | Classes | px (base / `sm+`) |
+|---|---|---|
+| `main` top / bottom | `pt-8 sm:pt-12` / `pb-16 sm:pb-20` | 32/48, 64/80 |
+| Between sections | `Section`: `mt-14 sm:mt-16` | 56 / 64 |
+| Section heading → content | `mb-5 sm:mb-6` | 20 / 24 |
+| Between list items | `divide-y divide-border`, items `py-6 first:pt-0 last:pb-0` | 24 + 1px rule + 24 |
+| "View all … →" below its list | `mt-5` | 20 |
+| Inside an item: title row → description | `mt-1.5` | 6 |
+| Inside an item: description → tags, tags/description → bullets, bullets → links, title row → first detail block | `mt-3` | 12 |
+| Inside an item: small label → its content; between bullets | `mt-1.5`; `space-y-1.5` | 6 |
+| Hero: avatar row → bio; bio → socials | `mt-6`; `mt-5` | 24; 20 |
+| Skills: label → tags (below `sm`); rows (`sm+`); groups (below `sm`); tags | `gap-1.5`; `gap-y-3`; `gap-y-5`; `gap-1.5` | 6; 12; 20; 6 |
+| Page header → content; Resume buttons → preview | `mb-10 sm:mb-12`; `mt-5 sm:mt-6` | 40 / 48; 20 / 24 |
 
 ### 5.2 `PageHeader` (used by Experience / Projects / Resume / 404)
 
@@ -1039,25 +1040,32 @@ export function Reveal({ as: Tag = "div", step = 0, className, children }: Revea
 
 Wrap top-level page blocks (hero = 0, bio = 1, socials = 2, sections = 3…). Do not wrap every list item.
 
-### 5.4 `TechChip`
+### 5.4 `TechTag` (replaces `TechList`)
 
 ```tsx
-type TechChipProps = { name: string };
+type TechTagProps = { name: string };
 
-export function TechChip({ name }: TechChipProps) {
-  // Direct registry read (same as getTechIcon): entries are module-level components, so identity is stable
-  const Icon: IconType | undefined = TECH_ICONS[toKey(name)];
+// Static tag (not interactive: no hover). Parent: <ul className="flex flex-wrap gap-1.5">
+export function TechTag({ name }: TechTagProps) {
   return (
-    <li className="inline-flex items-center gap-1.5 rounded-full border border-border bg-subtle px-2.5 py-1 text-xs font-medium text-fg/80">
-      {Icon && <Icon aria-hidden className="size-3.5 shrink-0" />}
-      <span className="whitespace-nowrap">{name}</span>
+    <li className="rounded-md border border-border bg-subtle px-2 py-0.5 text-[13px] leading-6 font-medium whitespace-nowrap text-fg/85">
+      {name}
     </li>
   );
 }
-// parent: <ul className="flex flex-wrap gap-2">
 ```
 
-Why not `getTechIcon(name)`: calling a function that returns a component during render fails `pnpm lint` (`react-hooks/static-components`, "component is created during render"), even though the registry entries are stable. A property read passes, the same pattern `SocialLinks` uses with `meta.icon`. `getTechIcon` stays exported for non-render use.
+Compact, static tags for every skill and tech entry: Home Skills, project tech and experience tech. The owner replaced the dot-separated `TechList` with this after Step 20; `TechList` and its separator CSS are deleted.
+- **Parent:** always `<ul className="flex flex-wrap gap-1.5">` (6px gaps), rendered by the caller. Render it only when the list is non-empty.
+- **Size:** 29px tall (24px line box + `py-0.5` + 1px borders), `rounded-md` (6px). It's 13px medium text at 85% `fg`.
+- **Not interactive:** no hover, focus or transition classes. Measured: no `:hover` rule matches the tag's classes.
+- **`whitespace-nowrap`:** multi-word names ("Server-Sent Events", "GitHub Actions") always stay on one line inside the tag; the row wraps between tags.
+- **Border contrast** (intentionally subtle, measured):
+  - light: `#e4e4e7` border on the `#f4f4f5` fill on the `#fafafa` page (1.15:1 against the fill, 1.22:1 against the page);
+  - dark: `#27272a` on `#18181b` on `#0a0a0a` (1.19:1 and 1.33:1).
+
+  Visible in both themes without drawing attention.
+- No icons (the tech-icon registry is gone, §3.9).
 
 ### 5.5 `StatusBadge`
 
@@ -1084,7 +1092,7 @@ Extends `ComponentProps<"a">`. `group inline-flex items-center gap-1 text-sm fon
 ### 5.7 `CopyEmail` + `useCopyToClipboard`
 
 - `src/hooks/useCopyToClipboard.ts` returns `{ copied, copy }`. `copy(text): Promise<boolean>` uses `navigator.clipboard.writeText` and resolves `false` when the API is missing or rejects. `copied` resets after 1500ms; the timer is cleared on re-copy and on unmount.
-- `CopyEmail`: a `rounded-lg` bordered button (`border border-border px-3 py-2 text-sm font-medium text-fg transition-colors hover:bg-subtle` + focus ring) showing `site.email` and a copy icon. On success the copy icon crossfades to a check (`text-accent`): both icons sit in one grid cell (`[grid-area:1/1]`), the hidden one gets `scale-75 opacity-0`, `transition-[opacity,transform] duration-200`. If `copy()` resolves `false`, fall back to `window.location.href = "mailto:…"`.
+- `CopyEmail` is **inline text, not a bordered button** (owner). It sits in the Home hero's meta line as its third item (role · location · email, §6.1). It's an unstyled `<button type="button">`, `inline-flex min-w-0 max-w-full items-center gap-1.5 text-muted transition-colors hover:text-fg` + focus ring + `focus-visible:transition-none` (a `text-muted` control). It has no border, background or padding box, and inherits the meta line's `text-sm`. It shows `site.email` and a `size-3.5` copy icon in the current text colour. On success the copy icon crossfades to a check (`text-accent`) for 1.5s: both icons sit in one grid cell (`[grid-area:1/1]`), the hidden one gets `scale-75 opacity-0`, `transition-[opacity,transform] duration-200`. If `copy()` resolves `false`, fall back to `window.location.href = "mailto:…"`.
 - `aria-label="Copy email address {email}"` (contains the visible text, WCAG 2.5.3), `title="Copy email"`.
 - Visually hidden `<span aria-live="polite">` announces "Email copied" (empty otherwise).
 - Long emails: `truncate` on the text, inside `min-w-0` parents (`flex min-w-0` wrapper, `min-w-0 max-w-full` button).
@@ -1129,21 +1137,31 @@ Each block in `<Reveal step={n}>`:
 
 1. **Hero** — a row with the avatar and the name/role block **side by side at all widths** (the Reveal is `flex items-center gap-4 sm:gap-5`; never stacked):
    - avatar: `size-16 shrink-0 rounded-full bg-subtle object-cover sm:size-20`, `alt=""` (the name is right beside it), `width={80} height={80}`, `fetchPriority="high"`, not lazy;
-   - name/role block, `min-w-0 flex-1`: name (`<h1>`, page-title scale, `break-words`), then a `mt-3 flex flex-wrap items-center gap-x-2 gap-y-1` row (meta scale) with `<p className="mr-2">{role · location}</p>` + `<CopyEmail />`;
+   - name/role block, `min-w-0 flex-1`: name (`<h1>`, page-title scale, `break-words`), then the **meta line** `mt-3` (meta scale `text-sm text-muted tabular-nums`) with three items **role · location · email**, the email being the inline `<CopyEmail />` (§5.7):
+     - The line is `flex flex-wrap gap-y-1`. Each item is `flex min-w-0` and **leads with its own separator**, `<span aria-hidden className="w-4 shrink-0 text-center">·</span>`. The 16px box puts the dot 8px from each neighbour, the same spacing as `gap-x-2` around a `·`.
+     - **Clean wrapping:** the line is pulled 16px left (`-ml-4`) and clipped with `[clip-path:inset(-0.5rem_-0.5rem_-0.5rem_0.75rem)]`. The clip edge sits 4px outside the content edge, so the separator of whichever item **starts a line** is hidden. A wrapped line never starts or ends with a dangling `·`. The 4px keeps the email's focus ring (2px offset + 2px outline) fully visible when the email starts a line. The negative top/right/bottom insets clip nothing else.
+     - At 320px the line wraps to role / location / email on 3 lines, and the email truncates (`min-w-0` chain + `truncate`). From 768px it's one line.
+     - Role and location are `<span className="min-w-0 break-words">`; a missing location drops its item.
    - if `site.avatar` is null, the image is omitted and the name/role block leads alone, flush with the content edge.
-2. **Bio** — `site.bio` paragraphs, each `<p><RichText text={paragraph} /></p>`, body scale, `mt-8 max-w-prose space-y-3` (the Reveal itself carries the classes).
-3. **Socials** — `mt-6`, `<SocialLinks className="-ml-2" />` (aligns icon glyphs with the text edge).
+2. **Bio** — `site.bio` paragraphs, each `<p><RichText text={paragraph} /></p>`, body scale, `mt-6 max-w-prose space-y-3` (the Reveal itself carries the classes).
+3. **Socials** — `mt-5`, `<SocialLinks className="-ml-2" />` (aligns icon glyphs with the text edge). They're also in the footer, on purpose (§4.7).
 > **With no jobs (`experience = []`), Home switches to projects-first (§6.7):** items 4 and 5 are replaced by one "Projects" section (step 3). Everything below describes Home with ≥ 1 job, which Step 20 leaves unchanged.
 
-4. **Experience** — `Section title="Experience"` (no header action). First `site.home.experienceLimit` of `sortExperience(experience)` as **`preview`** `ExperienceItem`s (§6.2), laid out exactly like the Experience page: `divide-y divide-border`, each item wrapped in `py-8 first:pt-0 last:pb-0` (the same visible rhythm; `last:pb-0` lets the link or the next section set the gap below). Below the list, a `Link` to `/experience` reading **"View all experience →"**, shown **whenever there is any experience** (the section itself hides when there is none), because tech, links and the remaining highlights only live on that page. Action-link classes (`ACTION`, shared with "View all projects →"): `mt-8 inline-block text-sm font-medium text-muted transition-colors hover:text-fg` + focus ring + `focus-visible:transition-none`.
-5. **Featured projects**: `Section title="Featured projects"` (no header action). It renders the first `site.home.projectLimit` (3) `featured` projects as a **list, not cards**, with the same rhythm as the Experience preview: `divide-y divide-border`, each row wrapped in `py-8 first:pt-0 last:pb-0`.
+4. **Experience** — `Section title="Experience"` (no header action). First `site.home.experienceLimit` of `sortExperience(experience)` as **`preview`** `ExperienceItem`s (§6.2), laid out exactly like the Experience page: `divide-y divide-border`, each item wrapped in `py-6 first:pt-0 last:pb-0` (the same visible rhythm; `last:pb-0` lets the link or the next section set the gap below). Below the list, a `Link` to `/experience` reading **"View all experience →"**, shown **whenever there is any experience** (the section itself hides when there is none), because tech, links and the remaining highlights only live on that page. Action-link classes (`ACTION`, shared with "View all projects →"): `mt-5 inline-block text-sm font-medium text-muted transition-colors hover:text-fg` + focus ring + `focus-visible:transition-none`.
+5. **Featured projects**: `Section title="Featured projects"` (no header action). It renders the first `site.home.projectLimit` (3) `featured` projects as a **list, not cards**, with the same rhythm as the Experience preview: `divide-y divide-border`, each row wrapped in `py-6 first:pt-0 last:pb-0`.
    - **`ProjectRow`** (`src/components/projects/ProjectRow.tsx`) is an `<article>` holding:
      - `ProjectHeader` (below);
-     - then the description, `<p className="mt-2 line-clamp-2 text-[15px] leading-relaxed text-muted"><RichText … /></p>`.
-   - The row has no tech chips or highlights (those are on the Projects page only).
+     - then the description, `<p className="mt-1.5 line-clamp-2 text-[15px] leading-relaxed text-muted"><RichText … /></p>`.
+   - The row has no tech tags or highlights (those are on the Projects page only).
    - Below the list, **"View all projects →"** (`Link` to `/projects`, `ACTION` classes) appears **only when `projects.length` is greater than the number shown**.
    - The section is hidden if no project is featured.
-6. **Skills** — `grid gap-x-6 gap-y-4 sm:grid-cols-[8rem_1fr]`: group label (`text-sm text-muted sm:pt-1`, centred on the first chip row) + chip list (`-mt-2 sm:mt-0 flex flex-wrap gap-2`, so a stacked label sits 8px above its chips on mobile).
+6. **Skills** — `grid gap-x-6 gap-y-5 sm:grid-cols-[10rem_1fr] sm:gap-y-3`. Each group is a `<div className="flex flex-col gap-1.5 sm:contents">` holding the label `<p className="text-sm font-semibold text-fg sm:pt-1">` and `<ul className="flex flex-wrap gap-1.5">` of `TechTag`s.
+   - **Below `sm`:** the label sits 6px above its tags (`gap-1.5`); groups are 20px apart (`gap-y-5`).
+   - **From `sm`:** rows are 12px apart (`sm:gap-y-3`).
+   - **From `sm`:** `sm:contents` makes the label and tags direct grid items. The label's `sm:pt-1` puts its **text** on the text line of the first tag row, not on the top of the tag boxes: a tag's text starts 3px down (1px border + 2px `py-0.5`), inside a 24px line box against the label's 20px.
+     - Measured baseline offset: −0.23px with `pt-1`, against +0.78px at 5px and +1.78px at 6px, so `pt-1` is the closest value on the spacing scale.
+   - The `10rem` column keeps "Databases & Caching" (14px semibold, about 140px) on one line.
+   - No `items-baseline` and no `items-start` are needed: the label is always shorter than a tag row, so the grid row never stretches the tag list.
 
 Reveal steps 0–5 in this order. Sections with no data (no jobs, no featured projects, no skills, empty bio) render nothing. In zero-experience mode the "Projects" section takes step 3 and Skills keeps step 5 (§6.7).
 
@@ -1188,7 +1206,7 @@ export function CompanyLogo({ company, logo }: CompanyLogoProps) {
 
 `alt=""` and `aria-hidden` because the company name is right next to the tile.
 
-**Layout:** `flex gap-4` → `[tile][content: min-w-0 flex-1]`. Everything (title row, labels, chips, bullets, links) sits in the content column, so all of it shares one left edge.
+**Layout:** `flex gap-4` → `[tile][content: min-w-0 flex-1]`. Everything (title row, labels, tech tags, bullets, links) sits in the content column, so all of it shares one left edge.
 
 ```
 <article class="flex gap-4">
@@ -1213,35 +1231,35 @@ export function CompanyLogo({ company, logo }: CompanyLogoProps) {
 </article>
 ```
 
-**Details.** Each block renders only if its data exists, and each has `mt-4`:
+**Details.** Each block renders only if its data exists, and each has `mt-3` (inside-item gap, §5.1):
 
-1. **Technologies & Tools** (full mode only): label `<p className="text-sm font-medium text-muted">Technologies &amp; Tools</p>`, then `<ul className="mt-2 flex flex-wrap gap-2">` of `TechChip`s.
-2. **What I've done:** the same label style, then `<BulletList items={highlights} className="mt-2" />`.
-   - **`BulletList`** (`src/components/ui/BulletList.tsx`, shared with project highlights, §6.4) props: `items: string[]`, `className?`. It renders nothing for an empty array; otherwise `<ul className="space-y-2 text-[15px] leading-relaxed text-muted">` with `<li className="relative pl-4 before:absolute before:left-0 before:top-[0.7em] before:size-1 before:rounded-full before:bg-muted/60"><RichText text={item} /></li>`.
-3. **Links** (full mode only): `<ul className="mt-4 flex flex-wrap gap-x-4 gap-y-2">` of `<li><ExternalLink href={url}>{label}</ExternalLink></li>`.
+1. **Technologies & Tools** (full mode only): label `<p className="text-sm font-medium text-muted">Technologies &amp; Tools</p>`, then `<ul className="mt-1.5 flex flex-wrap gap-1.5">` of `TechTag`s (the label stays because the full item already uses labels).
+2. **What I've done:** the same label style, then `<BulletList items={highlights} className="mt-1.5" />`.
+   - **`BulletList`** (`src/components/ui/BulletList.tsx`, shared with project highlights, §6.4) props: `items: string[]`, `className?`. It renders nothing for an empty array; otherwise `<ul className="space-y-1.5 text-[15px] leading-relaxed text-muted">` with `<li className="relative pl-4 before:absolute before:left-0 before:top-[0.7em] before:size-1 before:rounded-full before:bg-muted/60"><RichText text={item} /></li>`.
+3. **Links** (full mode only): `<ul className="mt-3 flex flex-wrap gap-x-4 gap-y-2">` of `<li><ExternalLink href={url}>{label}</ExternalLink></li>`.
 
 The details render directly under the title row. There's no `border-t`, because the list's `divide-y` already separates rows.
 
-**Preview mode (Home only):** the same tile and title/date row (duration hidden), then the first N highlights as the **same bullet list**, `mt-4` directly under the header and **without the "What I've done" label** (it's the only block, so the label adds nothing). No tech chips, no links row. No highlights, or `highlightLimit: 0` → just the header.
+**Preview mode (Home only):** the same tile and title/date row (duration hidden), then the first N highlights as the **same bullet list**, `mt-3` directly under the header and **without the "What I've done" label** (it's the only block, so the label adds nothing). No tech tags, no links row. No highlights, or `highlightLimit: 0` → just the header.
 
 Missing optional fields must render nothing: no empty rows, no stray "·", no empty labels.
 
 ### 6.3 Experience (`/experience`)
 
 - `PageHeader` "Experience" + subtitle `` `${totalExperience(items)} of experience.` `` (`lib/dates.ts`, computed from the earliest start, never hard-coded; omitted when the list is empty). Description: `` `Work experience of ${site.name}, ${site.role}.` ``.
-- `sortExperience(experience)` → full `ExperienceItem`s (`headingAs="h2"`) in `divide-y divide-border`, each `py-8 first:pt-0`. Every block shows, with its label. Home's preview list uses the same wrapper classes.
+- `sortExperience(experience)` → full `ExperienceItem`s (`headingAs="h2"`) in `divide-y divide-border`, each `py-6 first:pt-0 last:pb-0`. Every block shows, with its label. Home's preview list uses the same wrapper classes.
 
 ### 6.4 Projects (`/projects`)
 
 A **list, not cards**, laid out exactly like the Experience page (§6.3).
 
 - `PageHeader` "Projects" + subtitle "Things I've built, with links to the live sites and source code." Description: `` `Projects by ${site.name}.` ``.
-- `projects` in data order → `ProjectItem`s (`headingAs="h2"`) in `divide-y divide-border`, each wrapped in `py-8 first:pt-0` (the same wrapper classes as the Experience page).
-- **`ProjectItem`** (`src/components/projects/ProjectItem.tsx`) props: `project`, `preview?: boolean` (zero-experience Home only, §6.7: the first `site.home.highlightLimit` highlights, no tech chips), `headingAs?: "h2" | "h3"` (default `"h3"`; `"h2"` on the Projects page, so headings don't skip). It's an `<article>` holding, in order:
+- `projects` in data order → `ProjectItem`s (`headingAs="h2"`) in `divide-y divide-border`, each wrapped in `py-6 first:pt-0 last:pb-0` (the same wrapper classes as the Experience page).
+- **`ProjectItem`** (`src/components/projects/ProjectItem.tsx`) props: `project`, `preview?: boolean` (zero-experience Home only, §6.7: the first `site.home.highlightLimit` highlights, no tech tags), `headingAs?: "h2" | "h3"` (default `"h3"`; `"h2"` on the Projects page, so headings don't skip). It's an `<article>` holding, in order:
   1. `ProjectHeader` (below): the title + `ProjectLinks` flush right;
-  2. the description, `<p className="mt-2 text-[15px] leading-relaxed text-muted"><RichText text={description} /></p>` (§5.8);
-  3. the highlights, `<BulletList items={highlights} className="mt-4" />` (the same bullets as `ExperienceItem`, §6.2), with no label;
-  4. the tech chips, `<ul className="mt-4 flex flex-wrap gap-2">` of `TechChip`s, with no label.
+  2. the description, `<p className="mt-1.5 text-[15px] leading-relaxed text-muted"><RichText text={description} /></p>` (§5.8);
+  3. the tech tags, **directly under the description**: `<ul className="mt-3 flex flex-wrap gap-1.5">` of `TechTag`s (no label; rendered only when there is tech);
+  4. the highlights, `<BulletList items={highlights} className="mt-3" />` (the same bullets as `ExperienceItem`, §6.2), with no label.
 
   Missing highlights or tech render nothing (no empty `ul`, no gap). Step 20's projects-first Home reuses it as `<ProjectItem preview />` (§6.7).
 - **`ProjectLinks`** (`src/components/projects/ProjectLinks.tsx`), used on Home rows and Projects list items. Props: `project`, `className?`.
@@ -1298,7 +1316,7 @@ Page (`const links = getResumeLinks(site.resume.driveUrl)`):
 - Preview iframe on **all** screen sizes, with a centred "Loading preview…" behind it so the box is never blank while it loads:
 
   ```tsx
-  <div className="relative mt-8 overflow-hidden rounded-lg border border-border bg-subtle">
+  <div className="relative mt-5 overflow-hidden rounded-lg border border-border bg-subtle sm:mt-6">
     <p aria-hidden className="absolute inset-0 grid place-items-center text-sm text-muted">Loading preview…</p>
     <iframe
       src={links.preview}
@@ -1310,7 +1328,7 @@ Page (`const links = getResumeLinks(site.resume.driveUrl)`):
   </div>
   ```
 
-  The wrapper carries `mt-8`, the border, the radius and `bg-subtle` instead of the iframe; `overflow-hidden` clips the iframe to the rounded corners. An iframe paints its own background over anything behind it, so `bg-subtle` on the iframe would hide the loading text. The Drive viewer covers the text once it loads. `block` removes the inline baseline gap under the iframe.
+  The wrapper carries `mt-5 sm:mt-6` (the section heading → content gap, §5.1), the border, the radius and `bg-subtle` instead of the iframe; `overflow-hidden` clips the iframe to the rounded corners. An iframe paints its own background over anything behind it, so `bg-subtle` on the iframe would hide the loading text. The Drive viewer covers the text once it loads. `block` removes the inline baseline gap under the iframe.
 
 ### 6.6 NotFound
 
@@ -1349,12 +1367,12 @@ export function getHomeProjects(): Project[];
 1. Hero, bio and socials: unchanged (Reveal steps 0–2).
 2. **No Experience section** at all: no heading, no empty space.
 3. **"Projects" section** directly after the socials: `<Reveal step={3}><Section title="Projects">` (h2), only when `getHomeProjects()` is non-empty.
-   - The list is `divide-y divide-border`, each row in `py-8 first:pt-0 last:pb-0`: the same rhythm as the Experience preview.
+   - The list is `divide-y divide-border`, each row in `py-6 first:pt-0 last:pb-0`: the same rhythm as the Experience preview.
    - Each row is `<ProjectItem project={p} preview />` (h3). **`preview` mirrors the `ExperienceItem` preview:**
      - `ProjectHeader`: the title + `ProjectLinks` flush right;
      - the description (`RichText`, not clamped);
-     - the first `site.home.highlightLimit` highlights as `<BulletList className="mt-4" />`;
-     - no tech chips.
+     - the first `site.home.highlightLimit` highlights as `<BulletList className="mt-3" />`;
+     - no tech tags.
    - Below the list, **"View all projects →"** (`ACTION`) only when `projects.length` is greater than the number shown.
 4. **The "Featured projects" section is not rendered** in this mode (no duplicate list).
 5. Skills: unchanged (step 5).
@@ -1380,7 +1398,7 @@ Both lists empty → hero + bio + socials + skills only. No empty sections.
 
 **Acceptance (Step 20)**
 - [ ] ≥ 1 job: Home, nav, routes and every page are exactly as before.
-- [ ] `experience = []`: no Experience section or nav link; the "Projects" section follows the socials with preview rows (title + icons, description, first N highlights, no chips); no "Featured projects" section; `/experience` and `/work` land on `/projects` after a full reload and after in-app navigation.
+- [ ] `experience = []`: no Experience section or nav link; the "Projects" section follows the socials with preview rows (title + icons, description, first N highlights, no tech tags); no "Featured projects" section; `/experience` and `/work` land on `/projects` after a full reload and after in-app navigation.
 - [ ] `experience = []` and `projects = []`: nav is Home · Resume; Home is hero + bio + socials + skills; `/experience`, `/work` and `/projects` land on `/`.
 - [ ] Setting either array to `[]` type-checks (`pnpm build`) with no other edit.
 
@@ -1416,7 +1434,7 @@ Durations: 150–200ms hover/press, 300ms state toggles (theme icon), 400–600m
 Polish: consistent focus rings; inverted `::selection`; SVG favicon monogram that reads on light and dark tabs (use a `prefers-color-scheme` media query inside the SVG).
 
 - **Favicon** (`public/favicon.svg`, done in Step 14): a 32×32 `rx=7` tile with one centred letter (`text-anchor="middle" dominant-baseline="central"`, system sans, 600 weight, size 20). Light scheme: tile `#18181b`, letter `#fafafa`; dark scheme (`@media (prefers-color-scheme: dark)` in the SVG's `<style>`): tile `#fafafa`, letter `#0a0a0a`. It follows the **browser/OS** scheme, not the site toggle. The placeholder letter is "Y" (from "Your Name"); the owner edits it by hand, like the static text in `index.html`.
-- **Focus rings:** `focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg` on every link, button and the skip link. **Rings appear instantly (owner, Step 16):** Tailwind's `transition-colors` includes `outline-color`, so on a `text-muted` control the ring used to fade from `currentColor` to `fg` over 150ms. Every `text-muted` control with `transition-colors` (NavLinks, `ThemeToggle`, `SocialLinks`, `ProjectLinks`, Home `ACTION`) also gets `focus-visible:transition-none`. Trade-off: while one of them is keyboard-focused, its hover colour change is instant too. `text-fg` controls (CopyEmail, RichText links, Resume buttons) don't need it: their outline colour doesn't change.
+- **Focus rings:** `focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg` on every link, button and the skip link. **Rings appear instantly (owner, Step 16):** Tailwind's `transition-colors` includes `outline-color`, so on a `text-muted` control the ring used to fade from `currentColor` to `fg` over 150ms. Every `text-muted` control with `transition-colors` (NavLinks, `ThemeToggle`, `SocialLinks`, `ProjectLinks`, Home `ACTION`) also gets `focus-visible:transition-none`. Trade-off: while one of them is keyboard-focused, its hover colour change is instant too. `text-fg` controls (RichText links, Resume buttons) don't need it: their outline colour doesn't change. CopyEmail is inline `text-muted` text since the owner's heading/spacing pass (§5.7), so it has `focus-visible:transition-none` too.
 - **`::selection`:** `bg-fg text-bg` (inverted in both themes).
 
 ### 7.1 Dawn/dusk theme transition — OPTIONAL, Step 19, branch `feat/theme-transition`
@@ -1500,11 +1518,14 @@ Rules:
 Targets (prod, mobile Lighthouse): **Performance ≥ 95, CLS < 0.02, LCP < 1.8s, initial JS ≤ 140 KB gzip (hard cap).**
 
 - Home eager; other pages lazy route chunks, warmed on idle.
-- `react-icons`: named imports only. The **full `SOCIAL_ICONS` and `TECH_ICONS` registries are kept on purpose**, so the owner can add socials or skills by editing data only. `getSocial()`/`getTechIcon()` look icons up by string, so every registered icon ships, used or not. That's why the budget is above the original ~110 KB:
+- `react-icons`: named imports only. The **full `SOCIAL_ICONS` registry is kept on purpose**, so the owner can add socials by editing data only. `getSocial()` looks icons up by string, so every registered social icon ships, used or not. History of the budget:
   - Step 8 (owner): raised to 130 KB, at 114.2 KB with the full social registry.
   - Consolidation pass after Step 9 (owner): raised to **140 KB, as a hard cap**, once `TechChip` on the eager Home page pulled in all of `TECH_ICONS` (+15.7 KB; 131.3 KB measured).
+  - Real-content pass after Step 20 (owner): tech chips became text-only and `TECH_ICONS` was deleted. Initial JS dropped from 135.73 to **121.11 KB**. The 140 KB cap stays.
+  - `TechList` pass (owner): chips replaced by a plain-text list, 121.18 KB.
+  - `TechTag` pass (owner): the list replaced by compact tags, **121.11 KB**.
 
-  **If the cap is exceeded later, the fix is code-splitting** (e.g. lazy-load a below-the-fold Home section or the tech-icon registry, keeping chip sizes reserved so nothing shifts). **Never raise the cap again, and don't trim the registries.**
+  **If the cap is exceeded later, the fix is code-splitting** (e.g. lazy-load a below-the-fold Home section, keeping its size reserved so nothing shifts). **Never raise the cap again, and don't trim `SOCIAL_ICONS`.**
 - Images: WebP/AVIF at ≤ 2× display size. Avatar ≤ 30 KB. Always `width`/`height`. (Projects have no images.)
 - Avatar preloaded in `index.html` (LCP element).
 - No layout shift on theme toggle, route change, or font load.
@@ -1519,18 +1540,30 @@ At **320, 375, 414, 768, 1024, 1440, 1920px**, light and dark:
 - [ ] No horizontal scroll (`document.documentElement.scrollWidth === window.innerWidth`).
 - [ ] Header on one line; active nav state correct.
 - [ ] Dates stack under titles on mobile, right-aligned on `sm+`.
-- [ ] Chips, socials, buttons wrap cleanly.
-- [ ] The Projects list matches the Experience page rhythm: `divide-y divide-border`, items `py-8 first:pt-0`, the same item-title scale, 15px body and the same bullets; a project missing highlights or tech leaves no gap.
+- [ ] Tech tags, socials, buttons wrap cleanly.
+- [ ] Skills and tech tags (`TechTag`):
+  - **Borders** are visible but subtle in both themes. Multi-word skills stay on one line inside a tag. All tags are the same height (29px), and none is wider than its row.
+  - **Skills:** labels are `text-sm font-semibold text-fg`. From `sm` each label's text sits on the text line of its first tag row (not the top of the tag boxes), and "Databases & Caching" stays on one line; rows are 12px apart. Below `sm` each label sits 6px above its tags and groups are 20px apart.
+  - **Tech tags:** on the Projects page they sit directly under the description (12px), before the bullets (12px); on the Experience page they sit 6px under "Technologies & Tools"; Home preview rows have none.
+- [ ] **Section headings are visibly larger than item titles** (h2 20/24px against 16/18px), and visibly smaller than the page title (30/36px). Home reads as clear sections.
+- [ ] **Inside-item gaps < between-item gaps < between-section gaps, on every page** (Home, Experience, Projects, Resume), with the §5.1 values only:
+  - inside an item, 6px or 12px;
+  - between list items, 24px + rule + 24px;
+  - between sections, 56/64px, and heading → content 20/24px.
+
+  Nothing is cramped at 320px and nothing overlaps.
+- [ ] Hero meta line (role · location · email): it wraps cleanly at 320px, with no line starting or ending in a `·` and the email truncated, not overflowing. Copying shows the check for 1.5s and announces "Email copied". The focus ring is fully visible even when the email starts a line.
+- [ ] The Projects list matches the Experience page rhythm: `divide-y divide-border`, items `py-6 first:pt-0 last:pb-0`, the same item-title scale, 15px body and the same bullets; a project missing highlights or tech leaves no gap.
 - [ ] Project link icons: only the links a project has, packed in the order GitHub · YouTube · Live, flush right, so the last icon ends at the content's right edge (the same x as the Experience date column, on Home and on the Projects page); no empty placeholders; a project with no links gets a full-width title row.
 - [ ] Resume: Drive preview iframe at every width without overflow (capped at `85dvh`); buttons wrap.
 - [ ] Tap targets ≥ 36px (social icons, theme toggle); no hover-only information.
-- [ ] Experience: logo and letter tiles the same size at every width; title row, labels, chips, bullets and links share the content column's left edge.
+- [ ] Experience: logo and letter tiles the same size at every width; title row, labels, tech tags, bullets and links share the content column's left edge.
 - [ ] Home shows the first N highlights (`site.home.highlightLimit`), matching the Experience page style (same tiles, title/date rows, bullets, `divide-y` spacing); "View all experience →" is always shown when there's experience.
 - [ ] Rich-text links: visible focus; external ones open in a new tab; `/path` ones navigate client-side.
 - [ ] **≥ 1 job: unchanged** (Step 20): the nav, Home sections, routes and every page render exactly as before the zero-experience mode existed.
 - [ ] **`experience = []`:**
   - the nav is Home · Projects · Resume;
-  - Home is hero, bio, socials, then a "Projects" section (preview rows: title + icons, description, the first N highlights, no chips; "View all projects →" when there are more), then Skills;
+  - Home is hero, bio, socials, then a "Projects" section (preview rows: title + icons, description, the first N highlights, no tech tags; "View all projects →" when there are more), then Skills;
   - there is no Experience or "Featured projects" section and no empty space;
   - `/experience` and `/work` land on `/projects` after a full reload and after in-app navigation.
 - [ ] **`experience = []` and `projects = []`:** the nav is Home · Resume; Home is hero + bio + socials + skills with no empty sections; `/experience`, `/work` and `/projects` land on `/` after a full reload and after in-app navigation.
@@ -1572,10 +1605,10 @@ Add a project      → src/data/projects.ts     append { title, description, hig
 Project highlights → src/data/projects.ts     highlights: ["…"], 2–4 bullets, Projects page only; same rules as Bold / links
 Project links      → src/data/projects.ts     links: { github?, youtube?, live? } (all optional; omit a key instead of "")
 Add/remove social  → src/data/socials.ts      add/remove { platform: "leetcode", url }
-Add a skill        → src/data/skills.ts       add "Name" to a group
+Add a skill        → src/data/skills.ts       add "Name" to a group (shown as a tag automatically; no icon, any name works)
 Update resume      → upload a new version in Google Drive via Manage versions; the link stays the same (bump site.resume.updated)
 Bio / email / name → src/data/site.ts
-New icon support   → src/lib/icons.ts         one line in SOCIAL_ICONS or TECH_ICONS
+New social icon    → src/lib/icons.ts         one line in SOCIAL_ICONS (skills have no icons)
 Favicon letter     → public/favicon.svg       change the letter inside <text>…</text> to your initial
 ```
 
@@ -1588,7 +1621,7 @@ Favicon letter     → public/favicon.svg       change the letter inside <text>�
 1. [ ] Phase 1 — audit, deps, alias, tokens, `index.html`, ThemeContext
 2. [ ] Phase 2 — types, data files, `dates.ts`, `icons.ts`, `validate.ts`
 3. [ ] Phase 3 — router, `main.tsx`, RootLayout, Container, Header, ThemeToggle, Footer, SocialLinks
-4. [ ] Phase 4 — Section, PageHeader, Reveal, TechChip, StatusBadge, ExternalLink, CopyEmail, RichText
+4. [ ] Phase 4 — Section, PageHeader, Reveal, TechTag (was TechChip, then TechList), StatusBadge, ExternalLink, CopyEmail, RichText
 5. [ ] Phase 5 — Home, Experience (ExperienceItem full + preview, CompanyLogo), Projects, Resume, NotFound (+ titles/meta)
 6. [ ] Phase 6 — motion + polish
 7. [ ] Phase 7 — performance pass

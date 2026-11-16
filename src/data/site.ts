@@ -18,7 +18,7 @@ export const site = {
   bio: ["Short paragraph about you. Keep it to 2–3 sentences."],
   email: "rajdeekshith2912@gmail.com",
   location: "City, Country",
-  avatar: "/avatar.webp", // null to hide
+  avatar: "/Toji.jpeg", // null to hide
   url: "https://yourdomain.com",
   resume: {
     driveUrl: "https://drive.google.com/file/d/17AymyEygpXDphkZ8cvz3ZORuqi6hEDQU/view?usp=drive_link",

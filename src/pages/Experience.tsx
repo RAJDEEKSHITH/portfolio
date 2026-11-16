@@ -25,7 +25,7 @@ export default function Experience() {
       <PageHeader title="Experience" subtitle={total ? `${total} of experience.` : undefined} />
       <div className="divide-y divide-border">
         {items.map((item) => (
-          <div key={`${item.company}-${item.start}`} className="py-8 first:pt-0">
+          <div key={`${item.company}-${item.start}`} className="py-6 first:pt-0 last:pb-0">
             <ExperienceItem item={item} headingAs="h2" />
           </div>
         ))}

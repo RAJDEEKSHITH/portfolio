@@ -22,7 +22,7 @@ export default function Projects() {
       {/* Same list rhythm as the Experience page */}
       <div className="divide-y divide-border">
         {work.map((project) => (
-          <div key={project.title} className="py-8 first:pt-0">
+          <div key={project.title} className="py-6 first:pt-0 last:pb-0">
             <ProjectItem project={project} headingAs="h2" />
           </div>
         ))}

@@ -30,10 +30,10 @@ Add a project      → src/data/projects.ts     append { title, description, hig
 Project highlights → src/data/projects.ts     highlights: ["…"], 2–4 bullets, Projects page only; same rules as Bold / links
 Project links      → src/data/projects.ts     links: { github?, youtube?, live? } (all optional; omit a key instead of "")
 Add/remove social  → src/data/socials.ts      add/remove { platform: "leetcode", url }
-Add a skill        → src/data/skills.ts       add "Name" to a group
+Add a skill        → src/data/skills.ts       add "Name" to a group (shown as a tag automatically; no icon, any name works)
 Update resume      → upload a new version in Google Drive via Manage versions; the link stays the same (bump site.resume.updated)
 Bio / email / name → src/data/site.ts
-New icon support   → src/lib/icons.ts         one line in SOCIAL_ICONS or TECH_ICONS
+New social icon    → src/lib/icons.ts         one line in SOCIAL_ICONS (skills have no icons)
 Favicon letter     → public/favicon.svg       change the letter inside <text>…</text> to your initial
 ```
 
@@ -41,7 +41,7 @@ A few details worth knowing:
 
 - **Current job:** `end: null` shows "Present" and a "Working" badge. Jobs are sorted automatically, so order in the file doesn't matter. Durations are computed for you.
 - **Home page limits:** `site.home.experienceLimit`, `projectLimit` and `highlightLimit` in `site.ts`. Projects with `featured: true` appear on Home (the first `projectLimit` of them).
-- **Skills:** known names (e.g. `"Next.js"`) get an icon; unknown names show as a text-only chip.
+- **Skills and tech:** every entry is shown as a small tag automatically. There are no icons, so any name works.
 - **Socials:** the icon comes from `platform` (it autocompletes). An unknown platform gets a generic link icon.
 - **Nav items:** `src/data/navigation.ts`. Each `to` must match a route in `src/router.tsx`.
 

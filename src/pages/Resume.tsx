@@ -35,7 +35,7 @@ export default function Resume() {
               <LuArrowUpRight aria-hidden className="size-4 shrink-0" />
             </a>
           </div>
-          <div className="relative mt-8 overflow-hidden rounded-lg border border-border bg-subtle">
+          <div className="relative mt-5 overflow-hidden rounded-lg border border-border bg-subtle sm:mt-6">
             <p aria-hidden className="absolute inset-0 grid place-items-center text-sm text-muted">
               Loading preview…
             </p>

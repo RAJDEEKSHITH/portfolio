@@ -5,41 +5,87 @@ import type { Project } from "@/types/content";
  * Required: title, description. Optional: highlights[], tech[], links{github, youtube, live}, featured.
  * links: every key optional → icon links (GitHub · YouTube · Live, always in that order). Omit a key rather than
  *   leaving it "". The title links to live, else github, else youtube.
- * highlights: bullets on the Projects page (not on Home). 2–4 recommended. Lead with the result; at most ONE
+ * highlights: bullets on the Projects page; with no experience, Home also shows the first site.home.highlightLimit,
+ *   so order them by importance. 2–4 recommended. Lead with the result; at most ONE
  *   **bold** metric/outcome per bullet; not every bullet needs one; real numbers only.
- * featured: true → shown on Home (the first site.home.projectLimit), as a compact list row: title,
- *   link icons and the description clamped to 2 lines.
+ * featured: true → shown on Home (the first site.home.projectLimit). With experience: a compact row (title, link
+ *   icons, description clamped to 2 lines). With no experience: a preview row (title, icons, description, first
+ *   highlights). If none is featured and there is no experience, Home shows the first projects instead.
  * description and highlights support rich text: **bold** and [label](url).
  */
+// TODO: replace the placeholder links (yourhandle / your-demo-id / example.com) with the real URLs
 export const projects = [
   {
-    title: "Project One",
-    description: "What it is and why it's interesting, in one or two sentences.",
+    title: "Hookrelay",
+    description:
+      "Multi-tenant webhook delivery service with at-least-once guarantees, retries and circuit breakers.",
     highlights: [
-      "Cut page load time by **60%** by moving rendering to the edge and caching API responses.",
-      "Built real-time sync with WebSockets so edits show up for every collaborator instantly.",
-      "Wrote the [deployment guide](https://example.com/docs) used to onboard new contributors.",
+      "Sustained **250 events/s** at p95 85 ms with 0 errors in a Grafana k6 benchmark.",
+      "Lost **0 of 5,000 events** in a chaos test that killed the worker mid-ingest and restarted Redis.",
+      "Guarantees at-least-once delivery with deterministic BullMQ job IDs, a sweeper for overdue deliveries, jittered backoff, a per-endpoint circuit breaker and dead-lettering.",
+      "Blocks SSRF by validating resolved IPs at connect time, and encrypts endpoint signing secrets with AES-256-GCM.",
     ],
-    tech: ["React", "Node.js", "MongoDB"],
+    tech: [
+      "TypeScript",
+      "Node.js",
+      "Express.js",
+      "React",
+      "Zustand",
+      "PostgreSQL",
+      "Drizzle ORM",
+      "BullMQ",
+      "Redis",
+      "Docker",
+      "Grafana k6",
+    ],
     links: {
-      github: "https://github.com/you/project-one",
-      youtube: "https://www.youtube.com/@you",
-      live: "https://example.com",
+      github: "https://github.com/yourhandle/hookrelay",
+      youtube: "https://www.youtube.com/watch?v=your-demo-id",
     },
     featured: true,
   },
   {
-    title: "Project Two",
-    description: "A second project with a **real outcome** up front, then how it was built.",
-    highlights: ["Shipped type-safe forms end to end, with one schema shared by the client and the server."],
-    tech: ["Next.js", "TypeScript"],
-    links: { github: "https://github.com/you/project-two", live: "https://example.org" },
+    title: "DeployBench",
+    description: "Self-hosted CI/CD platform: GitHub push → YAML pipeline → isolated Docker jobs → deploy to S3 or EC2.",
+    highlights: [
+      "Uses the transactional outbox pattern with BullMQ so **no webhook is lost** between PostgreSQL and Redis.",
+      "Schedules jobs from a validated dependency graph with cycle detection, running independent jobs in parallel.",
+      "Runs each job in an isolated Docker container with resource limits, timeouts and retries, streaming live logs via Redis Pub/Sub and SSE.",
+      "Verifies GitHub webhooks with HMAC-SHA256 and deploys with a latest-commit gate and health checks.",
+    ],
+    tech: [
+      "TypeScript",
+      "Node.js",
+      "Express.js",
+      "React",
+      "TanStack Query",
+      "PostgreSQL",
+      "Drizzle ORM",
+      "BullMQ",
+      "Redis",
+      "Docker",
+      "AWS",
+    ],
+    links: {
+      github: "https://github.com/yourhandle/deploybench",
+      youtube: "https://www.youtube.com/watch?v=your-demo-id",
+    },
     featured: true,
   },
   {
-    title: "Project Three",
-    description: "A smaller tool or library; source only.",
-    tech: ["Node.js"],
-    links: { github: "https://github.com/you/project-three" },
+    title: "Storiffy",
+    description: "Cloud file storage platform with direct-to-S3 uploads, CloudFront delivery and role-based sharing.",
+    highlights: [
+      "Uploads straight to S3 with presigned URLs: single-part up to **100 MB**, multipart for larger files.",
+      "Serves files through CloudFront edge caching, with time-limited signed URLs for private assets.",
+      "Shares files with viewer/editor roles, custom expiry and public or restricted modes, with inputs validated by Zod.",
+      "Handles authentication with Redis-backed sessions.",
+    ],
+    tech: ["TypeScript", "Node.js", "Express.js", "MongoDB", "Redis", "AWS", "React", "Redux Toolkit", "Zod"],
+    links: {
+      github: "https://github.com/yourhandle/storiffy",
+      live: "https://storiffy.example.com",
+    },
+    featured: true,
   },
 ] satisfies Project[];

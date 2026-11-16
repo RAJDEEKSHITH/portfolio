@@ -5,10 +5,10 @@ type SectionProps = { title?: string; action?: ReactNode; className?: string; ch
 
 export function Section({ title, action, className, children }: SectionProps) {
   return (
-    <section className={cn("mt-16 sm:mt-20", className)}>
+    <section className={cn("mt-14 sm:mt-16", className)}>
       {title && (
-        <div className="mb-6 flex items-baseline justify-between gap-4">
-          <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+        <div className="mb-5 flex items-baseline justify-between gap-4 sm:mb-6">
+          <h2 className="text-xl font-semibold tracking-tight text-fg sm:text-2xl">{title}</h2>
           {action}
         </div>
       )}

@@ -9,7 +9,7 @@ export function ProjectRow({ project }: ProjectRowProps) {
   return (
     <article>
       <ProjectHeader project={project} />
-      <p className="mt-2 line-clamp-2 text-[15px] leading-relaxed text-muted">
+      <p className="mt-1.5 line-clamp-2 text-[15px] leading-relaxed text-muted">
         <RichText text={project.description} />
       </p>
     </article>

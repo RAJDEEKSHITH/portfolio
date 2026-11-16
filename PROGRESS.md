@@ -11,7 +11,118 @@ Each step lists the `IMPLEMENTATION.md` sections to read. Read only those.
 _Overwrite this section at the end of every step._
 
 - **Last completed step:** Step 20, Adaptive Home for zero experience (spec from the owner, now IMPLEMENTATION.md §6.7). All required steps (1–17) plus Step 20 are done. Still optional: 18 (Hallmark audit, only if installed) and 19 (dawn/dusk theme transition, on `feat/theme-transition`, only if asked).
-- **Commit state:** Step 17, the projects-list change and the `/projects` fix are committed (the tree was clean apart from your own `src/data/skills.ts` edit, which I didn't touch). Step 20 is uncommitted.
+- **Commit state:** Steps 17 and 20, the projects-list change and the `/projects` fix are all committed. Uncommitted: the real-content change, the `TechTag` change and the heading/spacing/copy-email pass, all below.
+- **Owner change after Step 20 (no step ticked): heading hierarchy, a single spacing rhythm and inline copy-email.** Uncommitted, on top of the `TechTag` change. It supersedes every spacing value quoted in the older notes below.
+  - **Heading hierarchy.** `Section` h2 is now `text-xl sm:text-2xl font-semibold tracking-tight text-fg` (20/24px), between the h1 (30/36) and item titles (16/18). The h1 and item titles are unchanged.
+  - **Spacing rule: inside an item < between items < between sections.** All values are in the CLAUDE.md "Spacing rule" and the IMPLEMENTATION.md §5.1 table.
+    - `main`: `pt-8 sm:pt-12 pb-16 sm:pb-20`.
+    - `Section`: `mt-14 sm:mt-16`; heading → content `mb-5 sm:mb-6`.
+    - List items on Home, Experience and Projects: `py-6 first:pt-0 last:pb-0`. The Experience and Projects pages gained `last:pb-0`.
+    - Inside an item:
+      - title → description `mt-1.5`;
+      - tags, bullets and links `mt-3`, and the experience detail blocks `mt-3`;
+      - bullets `space-y-1.5`;
+      - a small label → its content (`Technologies & Tools`, `What I've done`) `mt-1.5`. **My call:** the spec didn't name this gap, so I matched the Skills label → tags gap.
+    - Hero: bio `mt-6`, socials `mt-5`.
+    - "View all … →": `mt-5`.
+    - Skills: `gap-y-5 sm:gap-y-3`, with the stacked group at `gap-1.5`. **My call:** I kept 20px between groups below `sm`, because the spec only set `gap-y-3` for `sm+`.
+    - **Left as is:** `PageHeader` `mb-10 sm:mb-12`. The spec didn't list it, and it's page-level, not a one-off.
+    - **Resume:** buttons → preview went from `mt-8` to `mt-5 sm:mt-6`. That was the only one-off value left; it now matches the section heading → content gap.
+  - **CopyEmail is inline text.**
+    - An unstyled button: `text-muted hover:text-fg transition-colors` + focus ring + `focus-visible:transition-none`.
+    - The email plus a `size-3.5` icon, `gap-1.5`.
+    - The check stays for 1.5s, with an `aria-live` "Email copied" (unchanged hook).
+    - On Home it's the third item of the meta line: role · location · email.
+  - **Deviation (clean wrapping):** the spec asked for `flex flex-wrap gap-x-2 gap-y-1`.
+    - With `·` as its own flex item, a wrapped line at 320px started or ended with a dangling dot.
+    - So each item leads with its own 16px `·` box, which looks the same as `gap-x-2` on both sides of a dot.
+    - The line is `-ml-4` and clipped with `[clip-path:inset(-0.5rem_-0.5rem_-0.5rem_0.75rem)]`, which hides the separator of whichever item starts a line. The clip edge is 4px outside the content edge, so the email's focus ring stays fully visible.
+    - The rest is as specified: `gap-y-1` and the `min-w-0` + `truncate` email. Documented in §6.1.
+  - **Socials stay in the hero and the footer.** The reason is now in IMPLEMENTATION.md §4.7 (the footer is the only social access off Home), with a cross-reference in §6.1.
+  - **Files changed:**
+    - `Section.tsx`, `CopyEmail.tsx`, `RootLayout.tsx`, `BulletList.tsx`;
+    - `ProjectItem.tsx`, `ProjectRow.tsx`, `ExperienceItem.tsx`;
+    - `Home.tsx` (the meta line + spacing), `Experience.tsx`, `Projects.tsx`, `Resume.tsx`.
+  - **Docs:**
+    - CLAUDE.md: the type scale (section heading), and a "Spacing rule" that replaces the old spacing line;
+    - IMPLEMENTATION.md:
+      - §4.3, which shows the `main` padding in code;
+      - §4.7 (socials reasoning), §5.1 (code + hierarchy + spacing table), §5.7 (inline CopyEmail);
+      - §6.1 (meta line, hero, Skills; also removed 5 stale leftover Skills lines that contradicted the current layout), §6.2, §6.3, §6.4;
+      - §6.5 and §6.7, whose code had the old values;
+      - the §7 focus note (CopyEmail is now `text-muted`);
+      - §9 (heading hierarchy, spacing rule and meta-line checks).
+  - **Verified with headless Chrome against your `pnpm dev` on :5173.** I checked that its modules were current first. Widths 320/768/1440, light and dark.
+    - **Pages:** Home, `/projects` and `/resume` with your data. Home and `/experience` again with `HEAD`'s 2 placeholder jobs, loaded temporarily. `experience.ts` was then restored byte-for-byte (same SHA-256 as before).
+    - **Measured gaps:**
+      - inside an item: 6 / 12px;
+      - between items: 24 + 1 + 24px;
+      - between sections: 56px, 64px from `sm`; heading → content 20 / 24px;
+      - "View all" 20px; hero → bio 24px; bio → socials 20px;
+      - Skills: 6/20px stacked, 12px rows from `sm`;
+      - `main` padding: 32/64px, and 48/80px from `sm`.
+    - **Headings:** h1 30/36, h2 20/24, item titles 16/18.
+    - **Meta line:**
+      - At 320 it's 3 lines (role / location / email), with no visible separator at any line start. The email is truncated (`rajdeekshith2912@gmail…`), as the spec allows.
+      - From 768 it's one line, with both separators visible.
+      - Keyboard Tab + Enter copies the real address, swaps to the check and announces "Email copied"; both reset after 1.5s.
+      - The focus ring is fully visible.
+    - No horizontal overflow and no console output.
+  - `pnpm build` + `pnpm lint` are clean. **Initial JS 121.21 KB gzip** (`index` 116.01 + shared 5.20).
+- **Owner change after Step 20 (no step ticked): `TechTag` replaces `TechList` everywhere** (Home Skills, project tech, experience tech). Uncommitted, on top of the real-content change below.
+  - **Supersedes the `TechList` decision.** The dot-separated list, its `::after` separator and the `@supports` alt-text CSS are all gone. `src/components/ui/TechList.tsx` was never committed, so it simply no longer exists. A `grep` for `TechList`/`TechChip`/the separator classes in `src/` is empty.
+  - **Files created:** `src/components/ui/TechTag.tsx`.
+    - An `<li>` with `rounded-md border border-border bg-subtle px-2 py-0.5 text-[13px] leading-6 font-medium whitespace-nowrap text-fg/85`.
+    - No icon and no hover.
+    - Callers render the parent `<ul className="flex flex-wrap gap-1.5">`.
+  - **Files changed:**
+    - `Home.tsx`, Skills: `grid gap-x-6 gap-y-5 sm:grid-cols-[10rem_1fr]`;
+      - each group is `<div className="flex flex-col gap-2 sm:contents">`, with the label `text-sm font-semibold text-fg sm:pt-1` and the tag `ul`;
+      - `sm:items-baseline` is gone.
+    - `ProjectItem.tsx`: the tags are `mt-3`, directly under the description and before the bullets, rendered only when there is tech; preview rows have none.
+    - `ExperienceItem.tsx`: the tags are `mt-2`, under the kept "Technologies & Tools" label.
+  - **Label alignment decision:** `sm:pt-1` puts the label's text on the text line of the first tag row. Measured baseline offsets: −0.23px at 4px, +0.78px at 5px, +1.78px at 6px, so `pt-1` is the closest value on the spacing scale; centres differ by 0.5px. No `items-start` is needed: the label (24px with its padding) is always shorter than a tag row (29px), so nothing stretches.
+  - **Docs:**
+    - IMPLEMENTATION.md: §1, §3.7, the §3.9 note, the Phase 2 line, §5.4 (rewritten for `TechTag`), §6.1, §6.2, §6.4, §6.7 wording, §8, §9, §11, §12;
+    - CLAUDE.md: the stack line, the `ui/` list, the type scale (skill label, tech tags), the radius rule (`rounded-md` tags), flex-wrap wording, and the "Add a skill" owner row;
+    - README: the quick reference and the Skills note.
+  - **Verified in headed Chrome at 320/768/1440 × light/dark,** against your `pnpm dev` on :5173 (Home, /projects) and against a scratch copy with `HEAD`'s 2 placeholder jobs on :5181 (/experience). Your data files were not touched, and the copy's server and junction were removed afterwards.
+    - **Tags:** 29px tall, 13px/24px, weight 500, 6px radius, 6px gaps. Every tag is one line, including "Server-Sent Events", "GitHub Actions" and "TanStack Query", and none overflows its row. No `:hover` rule matches.
+    - **Borders, measured contrast:** light is 1.15:1 against the fill and 1.22:1 against the page; dark is 1.19:1 and 1.33:1. Screenshots confirm they're visible but subtle in both themes.
+    - **Skills:** labels are 14px weight 600 in `fg`. "Databases & Caching" is one line at every width. At 320 each label sits 8px above its tags and groups are 20px apart.
+    - **Projects:** the tags sit 12px under the description and 16px above the bullets, left-aligned, on all 3.
+    - **Experience:** the tags sit 8px under the label.
+    - **Home preview rows:** no tags.
+    - No overflow and no console output.
+  - `pnpm build` + `pnpm lint` are clean. **Initial JS 121.11 KB gzip** (`index` 115.91 + shared 5.20), 0.07 KB less than with `TechList`.
+- **Owner change after Step 20 (no step ticked): real content, `experience = []`, text-only tech chips.** Uncommitted (Step 20 itself is committed).
+  - **Data:**
+    - `experience.ts` → `[] satisfies Experience[]` (header kept, plus a "No jobs yet?" line), so Home runs in the Step 20 projects-first mode;
+    - `projects.ts` → Hookrelay, DeployBench, Storiffy, all `featured`, 4 highlights each (≤ 1 bold per bullet); the header now explains what Home shows in each mode;
+    - `skills.ts` → 6 groups (Languages, Backend, AI & LLMs, Databases & Caching, Cloud & DevOps, Frontend), 37 skills.
+  - **⚠ Project links are placeholders:** the spec said `<url>` / `<demo url>`, so I used `https://github.com/yourhandle/{hookrelay,deploybench,storiffy}`, `https://www.youtube.com/watch?v=your-demo-id` and `https://storiffy.example.com`, with a `// TODO` above the array. Real URLs must be pasted in before launch.
+  - **Text-only chips** (superseded: chips → `TechList` → `TechTag`; the icon removal still stands):
+    - `TechChip` has no icon (classes unchanged except `gap-1.5`; `whitespace-nowrap` moved onto the `li`; still 25px tall);
+    - `icons.ts` lost `TECH_ICONS`, `getTechIcon`, 23 `Si*` imports and `FaAws`, and `toKey` is now module-private;
+    - `SOCIAL_ICONS` and the `ProjectLinks` icons are untouched;
+    - no dead code: a `grep` for `TECH_ICONS`/`getTechIcon` in `src/` is empty, and lint is clean.
+  - **Bug found and fixed (`Home.tsx`):** "Databases & Caching" wraps to 2 lines in the 8rem label column from `sm`, which made its grid row taller. The stretched `flex-wrap` chip list then stretched its flex line, so those chips rendered **44px tall**. Fix: `items-start` on the Skills grid. All 37 chips are now 25px, and every label's first line is centred within 1.2px of its first chip row.
+  - **Docs:**
+    - IMPLEMENTATION.md: §1 (bundle row), §3.6 (a shipped-data note), §3.7, §3.9, the Phase 2 acceptance line, §5.4, §6.1 (`items-start`), §8 (registry history + new size), §9 (a Skills check), §11;
+    - CLAUDE.md: the stack line, the owner table (Add a skill, social icon row) and DoD #7 ("never trim `SOCIAL_ICONS`");
+    - README: the quick reference and the Skills note.
+  - **Verified in headed Chrome against your `pnpm dev` on :5173** (its modules checked as current first), at 320/768/1440 × light/dark:
+    - **Nav:** Home · Projects · Resume.
+    - **Home:** Projects then Skills only. Hookrelay, DeployBench and Storiffy each show 2 bullets (the first ones), with the bold metrics and 0 chips. There's no "View all projects →" (3 of 3 shown). Link icons end at the content edge (300/729/1072).
+    - **Redirect:** `/experience` → `/projects` (full reload).
+    - **Nav click to Projects:** client-side, 3 items.
+    - **`/projects`:** 4/4/4 bullets, 11/11/9 chips; GitHub+YouTube, GitHub+YouTube, GitHub+Live.
+    - **Skills:** 37 text chips, 0 SVGs, all 25px. At 320 the labels are one line, stacked; from `sm` only "Databases & Caching" wraps (2 lines, inside 128px).
+    - No overflow and no console output.
+
+    Screenshots checked.
+  - `pnpm build` + `pnpm lint` are clean. **Initial JS 121.11 KB gzip** (`index` 115.91 + shared 5.20), **down 14.62 KB** from 135.73.
+  - `public/logos/company-a.svg` is now unused (there's no experience); delete it or keep it for later.
 - **Step 20, files created:** `src/lib/content.ts`. It's the single source of truth:
   - `hasExperience`, `hasProjects`;
   - `showProjectsPage = hasExperience || hasProjects`;
@@ -65,11 +176,11 @@ _Overwrite this section at the end of every step._
 - **Session note:** killing `pnpm dev`/`preview` leaves the Vite child listening; free it with `Get-NetTCPConnection -LocalPort <port> -State Listen | % { Stop-Process -Id $_.OwningProcess -Force }`. Ports 5199, 5180 and 4199 are free; your own `pnpm dev` on 5173 was left running.
 - **Owner decisions (final; don't reopen):**
   1. **After Step 8:** the three Step 8 deviations are accepted and documented (36px social icon links; `links: readonly Social[]`; `validate.ts` hot-accept). The 320px nav keeps the horizontal-scroll fallback (§4.5 has the real measurements).
-  2. **Consolidation pass, bundle:** initial JS **≤ 140 KB gzip, a hard cap** (supersedes Step 8's 130 KB). If it's exceeded later, **code-split; never raise it again, and keep the full `SOCIAL_ICONS` and `TECH_ICONS` registries.** Recorded in §8, CLAUDE.md DoD #7 and Step 15.
+  2. **Consolidation pass, bundle:** initial JS **≤ 140 KB gzip, a hard cap** (supersedes Step 8's 130 KB). If it's exceeded later, **code-split; never raise it again, and keep the full `SOCIAL_ICONS` registry.** (`TECH_ICONS` was deleted by the owner in the real-content pass after Step 20: chips are text-only.) Recorded in §8, CLAUDE.md DoD #7 and Step 15.
   3. **Consolidation pass, accordion: superseded after Step 13.** The owner replaced the accordion with the Home preview layout, so the chevron decision no longer applies. Still valid: the Experience page shows the labelled blocks without a `border-t`, and labels are `text-sm font-medium text-muted`.
   4. **Consolidation pass, other fixes:** all the extra fixes are accepted: `baseUrl`, `@source not`, `HydrateFallback`, the skip-link ring, the 300ms state-toggle rule, and safe link schemes in RichText.
   5. **Step 9 deviations accepted and now in the spec:**
-     - TechChip's direct registry read;
+     - ~~TechChip's direct registry read~~ (superseded: chips are text-only, no registry);
      - the ExternalLink focus ring;
      - CopyEmail details;
      - `copy()` returning `Promise<boolean>`.
@@ -100,7 +211,7 @@ _Overwrite this section at the end of every step._
     - ~~`expandable` replaces the old `compact` prop~~: superseded after Step 13 by `preview` (§6.2), still a single mode flag.
     - **Inline RichText links get the standard focus ring** in addition to the spec'd link classes.
     - ~~Chevron `-my-1.5` and panel `-mx-1 px-1 pb-1`~~: removed with the accordion after Step 13.
-  - From Step 9: see Owner decisions #5. `getTechIcon` is still exported but unused in render code.
+  - From Step 9: see Owner decisions #5. ~~`getTechIcon` is still exported~~ (deleted with `TECH_ICONS` after Step 20).
   - From Step 8: `{...(!isMail && {...})}` became an `external` object, with the same behaviour.
   - From Step 7:
     - **The 320px nav uses the scroll fallback.** "Resume" shows cut off until you swipe or Tab to it, or navigate to it (Step 16 scrolls the active link into view). `onFocus` calls `scrollIntoView`, and the toggle has `shrink-0`.
@@ -115,6 +226,7 @@ _Overwrite this section at the end of every step._
   - From Step 3: `eslint.config.js` allows the `useTheme` export via `allowExportNames`.
   - **Owner rule (CLAUDE.md "Plugins, skills & MCP servers"):** never install, enable or invoke plugins, skills or MCP servers unless asked in that session. The frontend-design plugin is enabled in the owner's user-level settings and must not be used. None has been used so far.
 - **Owner needs to provide:**
+  - **the real project URLs** in `src/data/projects.ts` (GitHub repos, YouTube demos, the Storiffy live site); they are placeholders now (see the TODO);
   - real content in `src/data/*`;
   - the resume's Google Drive share link in `site.resume.driveUrl` (Share → "Anyone with the link" → Viewer);
   - a real `public/avatar.webp` to replace the placeholder (square, ≥ 160×160, ≤ 30 KB). If you set `avatar: null`, delete the preload line in `index.html`;

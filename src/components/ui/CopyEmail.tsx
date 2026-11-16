@@ -3,11 +3,12 @@ import { site } from "@/data/site";
 import { cn } from "@/lib/cn";
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 
-const ICON = "size-4 shrink-0 [grid-area:1/1] transition-[opacity,transform] duration-200";
+const ICON = "size-3.5 shrink-0 [grid-area:1/1] transition-[opacity,transform] duration-200";
 const HIDDEN = "scale-75 opacity-0";
 
 type CopyEmailProps = { className?: string };
 
+/** Inline text button (no border or fill): the email + a small copy icon that crossfades to a check. */
 export function CopyEmail({ className }: CopyEmailProps) {
   const { copied, copy } = useCopyToClipboard();
 
@@ -24,12 +25,12 @@ export function CopyEmail({ className }: CopyEmailProps) {
         aria-label={`Copy email address ${site.email}`}
         title="Copy email"
         className={cn(
-          "inline-flex min-w-0 max-w-full items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium text-fg transition-colors hover:bg-subtle",
-          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg",
+          "inline-flex min-w-0 max-w-full items-center gap-1.5 text-muted transition-colors hover:text-fg",
+          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg focus-visible:transition-none",
         )}
       >
         <span className="truncate">{site.email}</span>
-        <span className="grid text-muted">
+        <span className="grid">
           <LuCopy aria-hidden className={cn(ICON, copied && HIDDEN)} />
           <LuCheck aria-hidden className={cn(ICON, "text-accent", !copied && HIDDEN)} />
         </span>

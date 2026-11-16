@@ -16,7 +16,7 @@ export function RootLayout({ error = false }: RootLayoutProps) {
         Skip to content
       </a>
       <Header />
-      <main id="main" className="flex-1 pb-20 pt-10 sm:pt-16">
+      <main id="main" className="flex-1 pt-8 pb-16 sm:pt-12 sm:pb-20">
         <div key={pathname} className="animate-fade-in motion-reduce:animate-none">
           {error ? <NotFound /> : <Outlet />}
         </div>
