@@ -827,6 +827,11 @@ export const router = createBrowserRouter([
 
 (`import type { ComponentType }` rather than the `React.` namespace: with `verbatimModuleSyntax` there's no global `React` to reference.)
 
+**Zero-experience redirects (Step 20, §6.7):** `/experience` → `/projects` (or `/`) and `/projects` → `/` are rendered as `<Navigate replace>` **inside the lazy page components** (`Experience.tsx`, `Projects.tsx`), so `router.tsx` stays exactly as above and imports no data.
+- **Why:** `router.tsx` isn't a React Refresh boundary, so importing `src/lib/content.ts` here would turn every `src/data/*` edit into a full page reload in dev (§3.10).
+- `/work` keeps pointing at `/experience` and chains through: `/work` → `/experience` → `/projects` (or `/`).
+- With ≥ 1 job, no redirect ever renders.
+
 ### 4.2 `src/main.tsx`
 
 ```tsx
@@ -898,7 +903,7 @@ export function Container({ as: Tag = "div", className, children }: ContainerPro
 
 - `<header className="sticky top-0 z-40 bg-bg/80 backdrop-blur-md">`
 - `<Container className="flex h-14 items-center justify-between gap-4">`
-- Left: `<nav aria-label="Primary">` → `<ul className="flex items-center gap-4 sm:gap-6">` of `NavLink`s from `navigation`:
+- Left: `<nav aria-label="Primary">` → `<ul className="flex items-center gap-4 sm:gap-6">` of `NavLink`s from **`getVisibleNav()`** (`src/lib/content.ts`, §6.7). With ≥ 1 job that's exactly `navigation`; with no jobs it drops `/experience`, and with no jobs and no projects it also drops `/projects`:
   - base `text-sm sm:text-[15px] text-muted transition-colors hover:text-fg`
   - active `text-fg font-medium` (className callback; pass `end` for `/`)
   - **must stay on one line at every width; never a hamburger.** At 320px the 4 labels plus the toggle need about 307px of the 280px available. They fit from 375px up. So the `ul` is always `overflow-x-auto` with a hidden scrollbar, and it only actually scrolls when the links don't fit:
@@ -1128,6 +1133,8 @@ Each block in `<Reveal step={n}>`:
    - if `site.avatar` is null, the image is omitted and the name/role block leads alone, flush with the content edge.
 2. **Bio** — `site.bio` paragraphs, each `<p><RichText text={paragraph} /></p>`, body scale, `mt-8 max-w-prose space-y-3` (the Reveal itself carries the classes).
 3. **Socials** — `mt-6`, `<SocialLinks className="-ml-2" />` (aligns icon glyphs with the text edge).
+> **With no jobs (`experience = []`), Home switches to projects-first (§6.7):** items 4 and 5 are replaced by one "Projects" section (step 3). Everything below describes Home with ≥ 1 job, which Step 20 leaves unchanged.
+
 4. **Experience** — `Section title="Experience"` (no header action). First `site.home.experienceLimit` of `sortExperience(experience)` as **`preview`** `ExperienceItem`s (§6.2), laid out exactly like the Experience page: `divide-y divide-border`, each item wrapped in `py-8 first:pt-0 last:pb-0` (the same visible rhythm; `last:pb-0` lets the link or the next section set the gap below). Below the list, a `Link` to `/experience` reading **"View all experience →"**, shown **whenever there is any experience** (the section itself hides when there is none), because tech, links and the remaining highlights only live on that page. Action-link classes (`ACTION`, shared with "View all projects →"): `mt-8 inline-block text-sm font-medium text-muted transition-colors hover:text-fg` + focus ring + `focus-visible:transition-none`.
 5. **Featured projects**: `Section title="Featured projects"` (no header action). It renders the first `site.home.projectLimit` (3) `featured` projects as a **list, not cards**, with the same rhythm as the Experience preview: `divide-y divide-border`, each row wrapped in `py-8 first:pt-0 last:pb-0`.
    - **`ProjectRow`** (`src/components/projects/ProjectRow.tsx`) is an `<article>` holding:
@@ -1138,7 +1145,7 @@ Each block in `<Reveal step={n}>`:
    - The section is hidden if no project is featured.
 6. **Skills** — `grid gap-x-6 gap-y-4 sm:grid-cols-[8rem_1fr]`: group label (`text-sm text-muted sm:pt-1`, centred on the first chip row) + chip list (`-mt-2 sm:mt-0 flex flex-wrap gap-2`, so a stacked label sits 8px above its chips on mobile).
 
-Reveal steps 0–5 in this order. Sections with no data (no jobs, no featured projects, no skills, empty bio) render nothing.
+Reveal steps 0–5 in this order. Sections with no data (no jobs, no featured projects, no skills, empty bio) render nothing. In zero-experience mode the "Projects" section takes step 3 and Skills keeps step 5 (§6.7).
 
 ### 6.2 `ExperienceItem` + `CompanyLogo`
 
@@ -1230,13 +1237,13 @@ A **list, not cards**, laid out exactly like the Experience page (§6.3).
 
 - `PageHeader` "Projects" + subtitle "Things I've built, with links to the live sites and source code." Description: `` `Projects by ${site.name}.` ``.
 - `projects` in data order → `ProjectItem`s (`headingAs="h2"`) in `divide-y divide-border`, each wrapped in `py-8 first:pt-0` (the same wrapper classes as the Experience page).
-- **`ProjectItem`** (`src/components/projects/ProjectItem.tsx`) props: `project`, `headingAs?: "h2" | "h3"` (default `"h3"`; `"h2"` on the Projects page, so headings don't skip). It's an `<article>` holding, in order:
+- **`ProjectItem`** (`src/components/projects/ProjectItem.tsx`) props: `project`, `preview?: boolean` (zero-experience Home only, §6.7: the first `site.home.highlightLimit` highlights, no tech chips), `headingAs?: "h2" | "h3"` (default `"h3"`; `"h2"` on the Projects page, so headings don't skip). It's an `<article>` holding, in order:
   1. `ProjectHeader` (below): the title + `ProjectLinks` flush right;
   2. the description, `<p className="mt-2 text-[15px] leading-relaxed text-muted"><RichText text={description} /></p>` (§5.8);
   3. the highlights, `<BulletList items={highlights} className="mt-4" />` (the same bullets as `ExperienceItem`, §6.2), with no label;
   4. the tech chips, `<ul className="mt-4 flex flex-wrap gap-2">` of `TechChip`s, with no label.
 
-  Missing highlights or tech render nothing (no empty `ul`, no gap). Step 20's "detailed" Home variant can reuse `ProjectItem` with `headingAs="h3"`.
+  Missing highlights or tech render nothing (no empty `ul`, no gap). Step 20's projects-first Home reuses it as `<ProjectItem preview />` (§6.7).
 - **`ProjectLinks`** (`src/components/projects/ProjectLinks.tsx`), used on Home rows and Projects list items. Props: `project`, `className?`.
   - **It renders only the links the project has,** packed together, in the fixed order GitHub (`FaGithub`) · YouTube (`FaYoutube`) · Live (`LuGlobe`). There are no placeholders and no shared slots.
   - With no links it renders nothing, so the title gets the full row width.
@@ -1308,6 +1315,74 @@ Page (`const links = getResumeLinks(site.resume.driveUrl)`):
 ### 6.6 NotFound
 
 `PageHeader` "404" / "This page doesn't exist." + `Link` "Go home →" (`text-sm font-medium text-fg underline-offset-4 hover:underline` + focus ring). Meta description: "This page doesn't exist." Rendered inside normal header/footer.
+
+### 6.7 Adaptive Home for zero experience (Step 20)
+
+> **Hard rule:** everything in this section applies **only when `experience.length === 0`**. With one or more jobs, Home, the nav, the routes and every page behave exactly as before (§4.1, §4.5, §6.1–§6.4).
+
+**No jobs yet?** Leave `export const experience = [] satisfies Experience[];` in `src/data/experience.ts`. Home switches to projects-first by itself, and the Experience page drops out of the nav.
+
+#### `src/lib/content.ts`: the single source of truth
+
+Nothing else checks `experience.length` / `projects.length`; components import these.
+
+```ts
+export const hasExperience = experience.length > 0;
+export const hasProjects = projects.length > 0;
+/** The Projects page is hidden only in zero-experience mode with no projects (hard rule: with jobs, nothing changes). */
+export const showProjectsPage = hasExperience || hasProjects;
+
+/** `navigation` minus /experience when !hasExperience, minus /projects when !showProjectsPage. */
+export function getVisibleNav(): NavItem[];
+
+/** The featured projects (array order) if any are featured, otherwise the first projects in array order;
+ *  limited to site.home.projectLimit. Used by the projects-first Home only. */
+export function getHomeProjects(): Project[];
+```
+
+`getHomeProjects()` doesn't pad: if 1 project is featured and `projectLimit` is 3, it returns just that one ("View all projects →" leads to the rest). The normal Home's "Featured projects" section keeps its own featured-only logic (§6.1), so it's unchanged.
+
+**Why `showProjectsPage` and not just `hasProjects`:** hiding `/projects` whenever `projects = []` would change today's behaviour for an owner with jobs but no projects, which breaks the hard rule. So `/projects` disappears only when **both** lists are empty.
+
+#### Home when `!hasExperience`
+
+1. Hero, bio and socials: unchanged (Reveal steps 0–2).
+2. **No Experience section** at all: no heading, no empty space.
+3. **"Projects" section** directly after the socials: `<Reveal step={3}><Section title="Projects">` (h2), only when `getHomeProjects()` is non-empty.
+   - The list is `divide-y divide-border`, each row in `py-8 first:pt-0 last:pb-0`: the same rhythm as the Experience preview.
+   - Each row is `<ProjectItem project={p} preview />` (h3). **`preview` mirrors the `ExperienceItem` preview:**
+     - `ProjectHeader`: the title + `ProjectLinks` flush right;
+     - the description (`RichText`, not clamped);
+     - the first `site.home.highlightLimit` highlights as `<BulletList className="mt-4" />`;
+     - no tech chips.
+   - Below the list, **"View all projects →"** (`ACTION`) only when `projects.length` is greater than the number shown.
+4. **The "Featured projects" section is not rendered** in this mode (no duplicate list).
+5. Skills: unchanged (step 5).
+
+Both lists empty → hero + bio + socials + skills only. No empty sections.
+
+#### Nav and redirects
+
+- `Header` maps `getVisibleNav()` instead of `navigation`.
+- The redirects live **inside the lazy page components**, not in `router.tsx`, so the router imports no data. If `router.tsx` imported `content.ts`, every `src/data/*` edit would become a full page reload in dev: `router.tsx` isn't a React Refresh boundary, which would undo the hot updates described in §3.10. The URL behaviour is the same either way:
+  - `Experience.tsx`: `if (!hasExperience) return <Navigate to={showProjectsPage ? "/projects" : "/"} replace />;`
+  - `Projects.tsx`: `if (!showProjectsPage) return <Navigate to="/" replace />;`
+  - `/work` keeps `<Navigate to="/experience" replace />` and chains through these: `/work` → `/experience` → `/projects` (or `/`).
+  - `replace` everywhere, so Back never lands on a redirecting URL.
+- The idle chunk warm-up (§4.2) still loads every page chunk; Experience is 0.6 KB, so it isn't special-cased.
+- **The static `sitemap.xml` (§10) stays as it is.** In the empty states, `/experience` (and `/projects`) redirect client-side, so a listed URL never shows a blank page.
+
+| State | Nav | Home | `/experience` | `/projects` |
+|---|---|---|---|---|
+| ≥ 1 job (any projects) | unchanged | unchanged | Experience page | Projects page (even if empty, as today) |
+| `experience = []`, ≥ 1 project | Home · Projects · Resume | hero, bio, socials, **Projects** (preview), skills | → `/projects` | Projects page |
+| `experience = []`, `projects = []` | Home · Resume | hero, bio, socials, skills | → `/` | → `/` |
+
+**Acceptance (Step 20)**
+- [ ] ≥ 1 job: Home, nav, routes and every page are exactly as before.
+- [ ] `experience = []`: no Experience section or nav link; the "Projects" section follows the socials with preview rows (title + icons, description, first N highlights, no chips); no "Featured projects" section; `/experience` and `/work` land on `/projects` after a full reload and after in-app navigation.
+- [ ] `experience = []` and `projects = []`: nav is Home · Resume; Home is hero + bio + socials + skills; `/experience`, `/work` and `/projects` land on `/`.
+- [ ] Setting either array to `[]` type-checks (`pnpm build`) with no other edit.
 
 **Phase 5 acceptance**
 - [ ] One `<h1>` per page; heading levels don't skip.
@@ -1452,6 +1527,13 @@ At **320, 375, 414, 768, 1024, 1440, 1920px**, light and dark:
 - [ ] Experience: logo and letter tiles the same size at every width; title row, labels, chips, bullets and links share the content column's left edge.
 - [ ] Home shows the first N highlights (`site.home.highlightLimit`), matching the Experience page style (same tiles, title/date rows, bullets, `divide-y` spacing); "View all experience →" is always shown when there's experience.
 - [ ] Rich-text links: visible focus; external ones open in a new tab; `/path` ones navigate client-side.
+- [ ] **≥ 1 job: unchanged** (Step 20): the nav, Home sections, routes and every page render exactly as before the zero-experience mode existed.
+- [ ] **`experience = []`:**
+  - the nav is Home · Projects · Resume;
+  - Home is hero, bio, socials, then a "Projects" section (preview rows: title + icons, description, the first N highlights, no chips; "View all projects →" when there are more), then Skills;
+  - there is no Experience or "Featured projects" section and no empty space;
+  - `/experience` and `/work` land on `/projects` after a full reload and after in-app navigation.
+- [ ] **`experience = []` and `projects = []`:** the nav is Home · Resume; Home is hero + bio + socials + skills with no empty sections; `/experience`, `/work` and `/projects` land on `/` after a full reload and after in-app navigation.
 - [ ] iOS Safari: no white flash, sticky header OK, `dvh` correct with toolbar.
 - [ ] Keyboard: skip link, full Tab order, focus always visible.
 - [ ] OS reduced-motion on → no animation.
@@ -1480,6 +1562,7 @@ Add `public/robots.txt` and a static `public/sitemap.xml` with the 4 routes.
 
 ```text
 Add a job          → src/data/experience.ts   append { company, role, start: "YYYY-MM", end: null | "YYYY-MM", … }
+No jobs yet        → src/data/experience.ts   leave experience = [] → Home switches to projects-first automatically
 Company logo       → public/logos/name.svg     then logo: "/logos/name.svg" on the job (square .svg/.webp; omit → letter tile)
 Links under a job  → src/data/experience.ts   links: [{ label: "Case study", url: "https://…" }]
 Highlights order   → src/data/experience.ts   order by importance; the first N (site.home.highlightLimit) appear on Home

@@ -1,12 +1,21 @@
+import { Navigate } from "react-router-dom";
 import { Container } from "@/components/layout/Container";
 import { ExperienceItem } from "@/components/experience/ExperienceItem";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { experience } from "@/data/experience";
 import { site } from "@/data/site";
+import { hasExperience, showProjectsPage } from "@/lib/content";
 import { sortExperience, totalExperience } from "@/lib/dates";
+import type { Experience as Job } from "@/types/content";
+
+// Read through the declared type so `experience = []` (typed never[]) still type-checks
+const allJobs: readonly Job[] = experience;
 
 export default function Experience() {
-  const items = sortExperience(experience);
+  // Zero-experience mode (§6.7). Redirect here, not in router.tsx, so the router imports no data
+  if (!hasExperience) return <Navigate to={showProjectsPage ? "/projects" : "/"} replace />;
+
+  const items = sortExperience(allJobs);
   const total = totalExperience(items);
 
   return (

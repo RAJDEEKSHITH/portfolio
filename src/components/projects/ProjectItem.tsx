@@ -2,18 +2,25 @@ import { ProjectHeader } from "@/components/projects/ProjectHeader";
 import { BulletList } from "@/components/ui/BulletList";
 import { RichText } from "@/components/ui/RichText";
 import { TechChip } from "@/components/ui/TechChip";
-import type { Project } from "@/types/content";
+import { site } from "@/data/site";
+import type { Project, Site } from "@/types/content";
+
+// Read through the declared type so the limit isn't narrowed to the literal in site.ts
+const home: Site["home"] = site.home;
 
 type ProjectItemProps = {
   project: Project;
+  /** Projects-first Home only (no experience): the first site.home.highlightLimit highlights, no tech chips */
+  preview?: boolean;
   /** Title heading level: "h2" on the Projects page (directly under the h1), "h3" under a Section h2 */
   headingAs?: "h2" | "h3";
 };
 
-/** Projects page list item: title row, description, highlights, tech chips. Missing parts render nothing. */
-export function ProjectItem({ project, headingAs = "h3" }: ProjectItemProps) {
-  const highlights = project.highlights ?? [];
-  const tech = project.tech ?? [];
+/** Title row, description, highlights, tech chips. Missing parts render nothing. */
+export function ProjectItem({ project, preview = false, headingAs = "h3" }: ProjectItemProps) {
+  const allHighlights = project.highlights ?? [];
+  const highlights = preview ? allHighlights.slice(0, Math.max(0, home.highlightLimit)) : allHighlights;
+  const tech = preview ? [] : (project.tech ?? []);
 
   return (
     <article>

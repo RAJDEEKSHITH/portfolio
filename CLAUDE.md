@@ -70,7 +70,7 @@ pnpm add -D <pkg>   # dev dep
 src/
   data/          # ← ALL editable content: site, navigation, socials, experience, projects, skills
   types/         # content.ts — shared content types
-  lib/           # pure helpers: dates.ts, icons.ts, cn.ts, theme.ts, validate.ts, resume.ts, richText.ts, projectLinks.ts
+  lib/           # pure helpers: dates.ts, icons.ts, cn.ts, theme.ts, validate.ts, resume.ts, richText.ts, projectLinks.ts, content.ts
   hooks/         # useCopyToClipboard.ts
   context/       # ThemeContext.tsx
   components/
@@ -87,7 +87,7 @@ public/          # avatar.webp, favicon.svg, og.png, robots.txt, logos/ (company
 
 - Import alias: `@/` → `src/` (e.g. `import { site } from "@/data/site"`).
 - Components never hard-code personal content (names, links, dates, bullets). Read from `src/data/`.
-- Derived values (sorting, "Present", durations, "Working" badge) are computed in `src/lib/`, never stored in data.
+- Derived values (sorting, "Present", durations, "Working" badge, zero-experience mode via `src/lib/content.ts`) are computed in `src/lib/`, never stored in data.
 - Owner-written text with formatting (bio, experience highlights, project descriptions and highlights) is rendered with `<RichText>`: only `**bold**` and `[label](url)`. Never `dangerouslySetInnerHTML`, never auto-bold numbers.
 - One component per file. Pages use `export default` (needed for lazy routes); everything else uses named exports.
 
@@ -155,6 +155,7 @@ public/          # avatar.webp, favicon.svg, og.png, robots.txt, logos/ (company
 | Task | File | How |
 |---|---|---|
 | Add a job | `src/data/experience.ts` | Append an object. `end: null` = current job → "Working" badge + "Present". Order doesn't matter (auto-sorted). |
+| No jobs yet | `src/data/experience.ts` | Leave `experience = []` and Home switches to projects-first automatically: no Experience section or nav link, and `/experience` redirects to `/projects`. If `projects` is empty too, `/projects` also redirects to `/`. Logic lives in `src/lib/content.ts` (IMPLEMENTATION.md §6.7). |
 | Company logo | `public/logos/` + `src/data/experience.ts` | Put a square `.svg`/`.webp` in `public/logos/`, set `logo: "/logos/name.svg"`. No logo → letter tile. |
 | Links under a job | `src/data/experience.ts` | `links: [{ label: "Case study", url: "https://…" }]`. Shown after the bullets (Experience page only). |
 | Highlights on Home | `src/data/experience.ts` + `src/data/site.ts` | Order highlights by importance; the first N (`site.home.highlightLimit`) appear on Home. |

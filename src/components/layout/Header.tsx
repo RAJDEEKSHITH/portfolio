@@ -2,8 +2,8 @@ import { useEffect, useRef } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { Container } from "@/components/layout/Container";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
-import { navigation } from "@/data/navigation";
 import { cn } from "@/lib/cn";
+import { getVisibleNav } from "@/lib/content";
 
 export function Header() {
   const { pathname } = useLocation();
@@ -27,7 +27,7 @@ export function Header() {
             ref={listRef}
             className="-mx-1 flex scroll-px-1 items-center gap-4 overflow-x-auto p-1 [scrollbar-width:none] sm:gap-6 [&::-webkit-scrollbar]:hidden"
           >
-            {navigation.map(({ label, to }) => (
+            {getVisibleNav().map(({ label, to }) => (
               <li key={to}>
                 <NavLink
                   to={to}

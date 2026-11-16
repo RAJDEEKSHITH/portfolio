@@ -10,72 +10,59 @@ Each step lists the `IMPLEMENTATION.md` sections to read. Read only those.
 
 _Overwrite this section at the end of every step._
 
-- **Last completed step:** Step 17 — Deploy prep + README. All required steps (1–17) are done. Remaining steps are optional: 18 (Hallmark audit, only if you installed it), 19 (dawn/dusk theme transition, on `feat/theme-transition`, only if you ask), 20 (parked).
-- **Commit state:** the tree was clean at the start of this step, so Steps 15 + 16 are already in `1f1e4dc`. This step's changes are uncommitted.
-- **fix: /projects showed no projects (dev only; no code change).**
-  - **Root cause:** a stale Vite dev server, not the code. The `pnpm dev` on :5173 (started 13:36) was running while `src/pages/Projects.tsx` was rewritten at 13:45. Its Windows file watcher read the file mid-write (truncated, 0 bytes) and cached that, so it kept serving an **empty module**: `sourcesContent: [""]`, while `?t=<random>` returned the full file.
-    - With no default export, `lazyPage` gives React Router `Component: undefined`, so the route renders nothing: header and footer only, no error.
-    - A hard reload can't fix it, because the cache is on the server.
-    - The "restart" didn't replace that process; it's the known orphaned-Vite-child issue (see Session note), so 5173 kept serving the stale module.
-    - My earlier verification ran a fresh server on :5199, which read the complete file, so it passed.
-  - **Fix:** killed the stale process and started a fresh `pnpm dev`. Every other file edited in that change was checked against the old server, and only `Projects.tsx` was stale.
-  - **Verified in a headed (real, non-headless) Chrome window against `pnpm dev` on :5173,** at 320 and 1440px, light and dark, both after a full reload (`ignoreCache`) and after clicking "Projects" in the nav from Home (client-side, same document). All 8 runs show:
-    - the h1 "Projects" and 3 articles (Project One | Two | Three);
-    - wrapper opacity 1, nothing at opacity 0 or hidden, and the first item on screen;
-    - no overflow, and no console errors or warnings.
+- **Last completed step:** Step 20, Adaptive Home for zero experience (spec from the owner, now IMPLEMENTATION.md §6.7). All required steps (1–17) plus Step 20 are done. Still optional: 18 (Hallmark audit, only if installed) and 19 (dawn/dusk theme transition, on `feat/theme-transition`, only if asked).
+- **Commit state:** Step 17, the projects-list change and the `/projects` fix are committed (the tree was clean apart from your own `src/data/skills.ts` edit, which I didn't touch). Step 20 is uncommitted.
+- **Step 20, files created:** `src/lib/content.ts`. It's the single source of truth:
+  - `hasExperience`, `hasProjects`;
+  - `showProjectsPage = hasExperience || hasProjects`;
+  - `getVisibleNav()`;
+  - `getHomeProjects()`.
+- **Step 20, files changed:**
+  - `Home.tsx`: `firstProjects = hasExperience ? [] : getHomeProjects()`.
+    - A new "Projects" section at Reveal step 3 with `<ProjectItem preview />` rows and "View all projects →" when there are more.
+    - The "Featured projects" section is gated on `hasExperience`.
+    - Reads experience through `allJobs: readonly Experience[]`.
+  - `ProjectItem.tsx`: `preview` prop (the first `highlightLimit` highlights, no chips).
+  - `Header.tsx`: maps `getVisibleNav()`.
+  - `Experience.tsx`: `<Navigate to={showProjectsPage ? "/projects" : "/"} replace />` when `!hasExperience`; reads through `allJobs`.
+  - `Projects.tsx`: `<Navigate to="/" replace />` when `!showProjectsPage`; reads through `work`.
+  - Docs:
+    - IMPLEMENTATION.md: §4.1, §4.5, §6.1, §6.4 (`preview`), the new §6.7, §9 (3 QA cases), §11;
+    - CLAUDE.md: the `lib/` list, the derived-values rule, and a "No jobs yet" owner-table row;
+    - README: the quick-reference line;
+    - this file: Step 20 is rewritten and ticked.
+- **Step 20, decisions (all in §6.7):**
+  1. **The hard rule beats item 1's literal "minus /projects when !hasProjects".** Hiding `/projects` whenever `projects = []` would change today's behaviour for an owner with jobs but no projects. So `/projects` is hidden and redirected only when **both** lists are empty (`showProjectsPage`).
+  2. **The redirects are rendered inside the lazy pages, not in `router.tsx`.** If the router imported `content.ts`, every `src/data/*` edit would become a full reload in dev, because `router.tsx` isn't a React Refresh boundary; that would undo §3.10's hot updates. The URLs behave the same and `router.tsx` is untouched; `/work` chains through.
+  3. **`getHomeProjects()`:** the featured projects if any are featured, otherwise the first projects in array order; capped at `projectLimit`. It doesn't pad featured projects with unfeatured ones. The normal Home's "Featured projects" logic is untouched.
+  4. **Reveal:** the "Projects" section takes step 3 and Skills keeps step 5, as "stays as is" asked; there's a 60ms gap where step 4 would be.
+  5. **Description in preview rows is not clamped** (the spec says "description (RichText)", mirroring the Experience preview); Home's `ProjectRow` still clamps to 2 lines in normal mode.
+  6. The idle chunk warm-up still loads the Experience chunk (0.43 KB gzip) in zero-experience mode; not special-cased.
+- **Bug found and fixed during verification:** with `experience = [] satisfies Experience[]` the array is typed `never[]`, so `pnpm build` failed in Home/Experience (`item.company` on `never`). The same happened in Projects with `projects = []`. All three pages now read the data through the declared types (`readonly Experience[]` / `readonly Project[]`, the pattern Home already used). **Both empty states now type-check with no other edit.**
+- **Verified, in headed (real) Chrome via DevTools at 320 and 1440px, light and dark:**
+  - **Normal data (≥ 1 job):** compared against a baseline served from `HEAD` (+ your `skills.ts`).
+    - **Byte-identical `<main>` and nav DOM** on `/`, `/experience`, `/projects`, `/resume` at both widths (16/16).
+    - Same Home sections, nav and Reveal delays (0–300ms).
+    - `/work` → `/experience`. Nav clicks and "View all projects →" work client-side.
+    - Re-run against **your `pnpm dev` on :5173**: also 16/16 identical, no console output.
+  - **`experience = []`:**
+    - the nav is Home · Projects · Resume;
+    - Home has Projects (2 featured rows, bullets 2/1 with `highlightLimit` 2, 0 chips, "View all projects →") and then Skills; no Experience or Featured section;
+    - `/experience` and `/work` land on `/projects` after a full reload and after in-app navigation (history push + popstate, same document);
+    - no console output.
+  - **`experience = []` + `projects = []`:** the nav is Home · Resume; Home is hero, bio, socials, Skills; `/experience`, `/work` and `/projects` all land on `/` (full reload and in-app); no console output.
+  - No overflow in any state.
 
-    Screenshots checked. `pnpm build` + `pnpm lint` are clean; initial JS is unchanged at 135.50 KB gzip.
-  - **If a page goes blank in dev after edits:** stop every Vite process (`Get-NetTCPConnection -LocalPort 5173 -State Listen | % { Stop-Process -Id $_.OwningProcess -Force }`), then run `pnpm dev` again. Port 5173 is free now.
-- **Owner change after Step 17 (no step ticked): Projects page cards → list, project highlights, year/image removed.** Uncommitted, on top of Step 17's uncommitted changes.
-  - **Data shape:** `Project = { title; description; highlights?; tech?; links?; featured? }`. `image` and `year` are gone from the type, data, validator, components and docs. `highlights` are RichText bullets (2–4 recommended; the same writing rules as experience highlights).
-  - **Placeholder data:** Project One has 3 highlights (one **bold** metric, one inline link), Project Two has 1, Project Three has none.
-  - **Validator:** the project `image` check is gone; it now warns on an empty or whitespace-only `projects[i].highlights[j]`.
-  - **Files created:**
-    - `src/components/projects/ProjectItem.tsx`: the list item (title row, description, highlights, tech chips);
-    - `src/components/ui/BulletList.tsx`: the bullet list pulled out of `ExperienceItem`, so experience and project bullets share one style. It renders nothing for an empty array.
-  - **Files changed:**
-    - `src/pages/Projects.tsx`: `divide-y divide-border` + `py-8 first:pt-0`, the same as the Experience page;
-    - `ProjectHeader.tsx`: the year and its wrapper are gone; the title heading sits directly in the row;
-    - `ExperienceItem.tsx`: uses `BulletList` (same classes, same output);
-    - `ProjectRow.tsx`: comment only;
-    - `src/types/content.ts`, `src/data/projects.ts` (header + data), `src/lib/validate.ts`.
-  - **Files deleted:** `src/components/projects/ProjectCard.tsx`, `public/projects/` (the placeholder webp). The card border hover, the image zoom and the equal-heights grid went with them.
-  - **Home is unchanged:** the top 3 featured, title + `ProjectLinks` + a 2-line description, "View all projects →". The only visible difference is that the year no longer appears.
-  - **Docs:**
-    - IMPLEMENTATION.md: §3.1, §3.6, §3.10 (+ a Phase 2 acceptance line), §5.8 (project highlights are rich text), §6.1, §6.2 (`BulletList`), §6.4 (rewritten as a list), §7 (image-zoom row and "card border" removed; the reduced-motion note now covers only the arrow nudge), §8 (no project images), §9 (the card check is replaced by "the Projects list matches the Experience page rhythm"), §11, §12;
-    - CLAUDE.md: the architecture comment (`ProjectItem`, `BulletList`), the RichText rule and the owner table (Add a project, a new Project highlights row);
-    - README: the quick reference, and the `public/projects/` row is gone from the launch table.
-  - **Verified (headless Chrome against `pnpm dev`, 320/768/1440 × light/dark):**
-    - Projects and Experience lists both have item padding `0/32px` then `32/32px`, h2 at 16px (18px from `sm`) weight 500, and 15px body and bullets;
-    - the last project icon's right edge = the Experience date column's right edge = the content edge (300 / 729 / 1073);
-    - bullets per project are 3/1/0, and Project Three shows no gap where highlights would be;
-    - no 4-digit years in the Projects list or Home's featured rows; 0 `<img>` on Projects; no horizontal overflow;
-    - Home: 2 featured rows, `line-clamp: 2`, no bullets or chips, "View all projects →" present, icons aligned with the date column.
-
-    Screenshots checked at 320 light and 1440 dark. `grep` finds no project `image`/`year`/`ProjectCard`/`scale-[` left in `src/`.
-  - `pnpm build` + `pnpm lint` are clean. **Initial JS 135.50 KB gzip** (`index` 130.31 + shared chunk 5.19), up 0.17 KB.
-  - `public/` has an untracked PDF that I didn't add; I left it untouched. It isn't referenced anywhere (the resume comes from Google Drive).
-- **Files created:**
-  - **`vercel.json`:** the SPA rewrite from §10 (`/(.*)` → `/`). Vercel serves real files first, so `/assets/*`, `robots.txt` etc. are unaffected.
-  - **`public/_redirects`:** `/*  /index.html  200` for Netlify.
-  - **`public/robots.txt`:** allow all + `Sitemap: https://yourdomain.com/sitemap.xml`.
-  - **`public/sitemap.xml`:** the 4 routes (`/`, `/experience`, `/projects`, `/resume`) on `https://yourdomain.com`.
-- **Files changed:**
-  - **`package.json`:** `"packageManager": "pnpm@12.4.2"` (the local pnpm version), placed after `type`.
-  - **`pnpm-lock.yaml`:** pnpm 12 itself added a pin document at the top (`packageManagerDependencies: pnpm 12.4.2` + the `@pnpm/exe.*` platform binaries, +158 lines) because of the `packageManager` field. No app dependency changed. **Commit it with the rest**, or `pnpm install --frozen-lockfile` on the host may fail. Checked: `pnpm install --frozen-lockfile` passes locally ("Lockfile is up to date").
-  - **`README.md`:** rewritten as the owner guide: commands, the §11 quick reference, notes on current job / Home limits / skills / socials / nav, the Resume (Drive) steps, a "Files to replace before launch" table, deploy settings per host, links to CLAUDE.md / IMPLEMENTATION.md.
-- **Decisions:**
-  - **Both `vercel.json` and `public/_redirects`** are added (the step allowed "and/or"); each host ignores the other's file. Delete the one you don't need if you like.
-  - **robots/sitemap are static** with the placeholder domain (per §10), not generated from `site.url`. Replace `https://yourdomain.com` in both when you have a domain; the README table lists them.
-  - **Unknown URLs return HTTP 200** with the in-app 404 page (normal for an SPA rewrite). Not changed.
-  - **The duplicate `<meta name="description">`** (static one in `index.html` + each page's own, from Step 6) is **left as is**: the static one is the fallback for crawlers that don't run JS, and React's per-page tags are present for those that do. If you'd rather have exactly one per page, delete the static line in `index.html` (ask and I'll do it).
-- **Verified:**
-  - `pnpm build` and `pnpm lint` are clean. **Bundle unchanged: 135.33 KB gzip initial JS** (`index` 130.18 + shared 5.15).
-  - `dist/` contains `_redirects`, `robots.txt`, `sitemap.xml`.
-  - `pnpm preview` (port 4199): `/`, `/projects`, `/experience`, `/resume` and `/nope` all return 200 `text/html` with the app shell; `/robots.txt` (text/plain) and `/sitemap.xml` (text/xml) are served as files. Headless Chrome on a direct load of `/projects` renders `<h1>Projects</h1>` and the "Projects — Your Name" title. The preview server was stopped afterwards.
+  Screenshots checked. (One full-page capture at 320 showed the sticky header over the hero. That was a stitching artifact taken mid-animation; a viewport capture shows `scrollY` 0, header at 0 and h1 at 96, and the layout is correct.)
+- **Temporary data states:** `experience.ts`/`projects.ts` were backed up, swapped only while the test server was stopped, then restored: `sha256sum -c` OK, `cmp` identical, and `git status` shows no change to either file. Your :5173 server serves the restored data and the new code: I checked its responses against `?t=` cache-busted ones, and the only differences are the `?t=` strings.
+- `pnpm build` + `pnpm lint` are clean in all three states. **Initial JS 135.73 KB gzip** (`index` 130.53 + shared 5.20), up 0.23 KB; Experience chunk 0.43 KB, Projects 0.40 KB.
+- **Earlier, committed:**
+  - **Step 17:** `vercel.json` + `public/_redirects` (both kept), static `robots.txt`/`sitemap.xml` on `https://yourdomain.com`, `packageManager: pnpm@12.4.2` (pnpm also pinned itself in `pnpm-lock.yaml`), README owner guide. The duplicate `<meta name="description">` is left as is: the static one in `index.html` is a fallback for no-JS crawlers.
+  - **Projects list:** cards became `ProjectItem` + `BulletList`; `image`/`year` were removed; projects gained highlights.
+  - **The `/projects` blank-page fix:** a stale Vite dev server had cached an empty `Projects.tsx`; no code change.
 - **⚠ Still to check on a real iPhone (from Step 16):** no white flash on load in dark mode, the sticky header while the toolbar collapses, and `85dvh` on the Resume preview.
 - **Earlier performance numbers (Step 15, for reference):** CLS 0 on every cold load, LCP 1.56–1.96s under mobile throttling. Not a Lighthouse score: run `pnpm build && pnpm preview` → Chrome DevTools → Lighthouse → Mobile for the real one.
-- **Session note:** killing `pnpm dev`/`preview` leaves the Vite child listening; free it with `Get-NetTCPConnection -LocalPort <port> -State Listen | % { Stop-Process -Id $_.OwningProcess -Force }`. Ports 5199 and 4199 are free.
+- **Session note:** killing `pnpm dev`/`preview` leaves the Vite child listening; free it with `Get-NetTCPConnection -LocalPort <port> -State Listen | % { Stop-Process -Id $_.OwningProcess -Force }`. Ports 5199, 5180 and 4199 are free; your own `pnpm dev` on 5173 was left running.
 - **Owner decisions (final; don't reopen):**
   1. **After Step 8:** the three Step 8 deviations are accepted and documented (36px social icon links; `links: readonly Social[]`; `validate.ts` hot-accept). The 320px nav keeps the horizontal-scroll fallback (§4.5 has the real measurements).
   2. **Consolidation pass, bundle:** initial JS **≤ 140 KB gzip, a hard cap** (supersedes Step 8's 130 KB). If it's exceeded later, **code-split; never raise it again, and keep the full `SOCIAL_ICONS` and `TECH_ICONS` registries.** Recorded in §8, CLAUDE.md DoD #7 and Step 15.
@@ -88,6 +75,7 @@ _Overwrite this section at the end of every step._
      - `copy()` returning `Promise<boolean>`.
   6. **Step 16:** footer socials `gap-0` below `sm`; ~~the Projects grid keeps equal card heights in a row~~ (superseded after Step 17: the Projects page is now a list); focus rings appear instantly (`focus-visible:transition-none` on `text-muted` controls with `transition-colors`).
 - **Decisions / deviations from spec** (everything below is now reflected in IMPLEMENTATION.md):
+  - **From Step 20:** `/projects` is hidden only when both lists are empty (hard rule); the redirects are rendered in the lazy pages, not in `router.tsx` (keeps data edits hot); `getHomeProjects()` doesn't pad featured projects; the pages read data through the declared types so `[]` type-checks (all in §6.7).
   - **From Step 10:**
     - the duration span renders only when it is non-empty, so there is no stray "·";
     - the role/type line is guarded;
@@ -302,15 +290,28 @@ _Overwrite this section at the end of every step._
 
   The owner reviews the branch and merges it. Only after the merge does the CLAUDE.md View Transitions exception apply.
 
-- [ ] **Step 20 (optional): Adaptive Home for zero experience** (parked; don't build)
-  - **Scope:**
-    - ~~project highlights~~ (done after Step 17: `Project.highlights`, shown on the Projects page);
-    - a "detailed" Home project variant: reuse `ProjectItem` (§6.4) with `headingAs="h3"` instead of building a new one;
-    - Home goes projects-first when `experience.length === 0`;
-    - `getVisibleNav()` hides empty pages;
-    - an `/experience` redirect.
-  - Behaviour with ≥ 1 job stays unchanged.
-  - **The owner will provide the spec.**
+- [x] **Step 20 (optional): Adaptive Home for zero experience**
+  Read: §6.7 (spec, from the owner), §4.1, §4.5, §6.1, §6.4
+  **Hard rule:** only when `experience.length === 0`. With ≥ 1 job, Home, the nav, the routes and every page behave exactly as now.
+  - `src/lib/content.ts`: `hasExperience`, `hasProjects`, `showProjectsPage`, `getVisibleNav()`, `getHomeProjects()`. This is the single source of truth.
+  - Home, `!hasExperience`:
+    - no Experience section;
+    - a "Projects" section right after the socials, with `ProjectItem preview` rows (title + icons, description, the first `highlightLimit` highlights, no chips) in the Experience-preview rhythm;
+    - "View all projects →" when there are more;
+    - no "Featured projects" section;
+    - Skills unchanged.
+  - Both lists empty → hero + bio + socials + skills only.
+  - Header uses `getVisibleNav()`.
+  - `/experience` → `/projects` (or `/`) and `/projects` → `/` when hidden, rendered as `<Navigate replace>` inside the lazy pages; `/work` chains through them.
+  - The static sitemap stays.
+  - Docs: §4.1, §4.5, §6.1, §6.7, §9, and the CLAUDE.md owner table.
+  **Done when:** in a real browser at 320 and 1440px, light and dark, with three temporary data states (normal, `experience = []`, `experience = []` + `projects = []`, restored byte-for-byte afterwards):
+  - the nav links are right;
+  - the redirects work after a full reload and after in-app navigation;
+  - there are no empty sections and no console errors;
+  - normal data is unchanged.
+
+  `pnpm build` + `pnpm lint` pass; initial JS is recorded (≤ 140 KB).
 
 ---
 

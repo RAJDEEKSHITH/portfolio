@@ -20,6 +20,7 @@ Everything below is in `src/data/` unless stated otherwise. Each data file start
 
 ```text
 Add a job          → src/data/experience.ts   append { company, role, start: "YYYY-MM", end: null | "YYYY-MM", … }
+No jobs yet        → src/data/experience.ts   leave experience = [] → Home switches to projects-first automatically
 Company logo       → public/logos/name.svg     then logo: "/logos/name.svg" on the job (square .svg/.webp; omit → letter tile)
 Links under a job  → src/data/experience.ts   links: [{ label: "Case study", url: "https://…" }]
 Highlights order   → src/data/experience.ts   order by importance; the first N (site.home.highlightLimit) appear on Home

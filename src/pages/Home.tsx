@@ -2,6 +2,7 @@ import { Fragment } from "react";
 import { Link } from "react-router-dom";
 import { Container } from "@/components/layout/Container";
 import { ExperienceItem } from "@/components/experience/ExperienceItem";
+import { ProjectItem } from "@/components/projects/ProjectItem";
 import { ProjectRow } from "@/components/projects/ProjectRow";
 import { CopyEmail } from "@/components/ui/CopyEmail";
 import { Reveal } from "@/components/ui/Reveal";
@@ -13,12 +14,14 @@ import { experience } from "@/data/experience";
 import { projects } from "@/data/projects";
 import { site } from "@/data/site";
 import { skills } from "@/data/skills";
+import { getHomeProjects, hasExperience } from "@/lib/content";
 import { sortExperience } from "@/lib/dates";
-import type { Project, Site } from "@/types/content";
+import type { Experience, Project, Site } from "@/types/content";
 
 // Read through the declared types so optional/nullable fields keep their full type whatever the data holds
 const info: Site = site;
 const work: readonly Project[] = projects;
+const allJobs: readonly Experience[] = experience;
 
 // "View all …" links below a list
 const ACTION =
@@ -27,9 +30,11 @@ const ACTION =
 const ROW = "py-8 first:pt-0 last:pb-0";
 
 export default function Home() {
-  const jobs = sortExperience(experience).slice(0, info.home.experienceLimit);
+  const jobs = sortExperience(allJobs).slice(0, info.home.experienceLimit);
   const featured = work.filter((p) => p.featured);
   const shownProjects = featured.slice(0, info.home.projectLimit);
+  // Zero-experience mode (§6.7): a projects-first list replaces both the Experience and Featured projects sections
+  const firstProjects = hasExperience ? [] : getHomeProjects();
   const meta = [info.role, info.location].filter(Boolean).join(" · ");
 
   return (
@@ -90,7 +95,27 @@ export default function Home() {
         </Reveal>
       )}
 
-      {shownProjects.length > 0 && (
+      {firstProjects.length > 0 && (
+        <Reveal step={3}>
+          <Section title="Projects">
+            {/* Mirrors the Experience preview above: same rhythm, first N highlights, no chips */}
+            <div className="divide-y divide-border">
+              {firstProjects.map((project) => (
+                <div key={project.title} className={ROW}>
+                  <ProjectItem project={project} preview />
+                </div>
+              ))}
+            </div>
+            {work.length > firstProjects.length && (
+              <Link to="/projects" className={ACTION}>
+                View all projects →
+              </Link>
+            )}
+          </Section>
+        </Reveal>
+      )}
+
+      {hasExperience && shownProjects.length > 0 && (
         <Reveal step={4}>
           <Section title="Featured projects">
             <div className="divide-y divide-border">
