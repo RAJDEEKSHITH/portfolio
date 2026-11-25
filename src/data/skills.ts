@@ -19,6 +19,6 @@ export const skills = [
   },
   {
     group: "CS Fundamentals",
-    items: ["Data Structures & Algorithms", "Object-Oriented Programming", "Operating Systems", "Computer Networks"],
+    items: ["Data Structures & Algorithms", "Object-Oriented Programming"],
   },
 ] satisfies SkillGroup[];
