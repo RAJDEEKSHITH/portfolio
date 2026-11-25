@@ -14,8 +14,10 @@ import type { Site } from "@/types/content";
 export const site = {
   name: "Rajdeekshith",
   role: "Backend & AI Engineer",
-  tagline: "I build fast, thoughtful products for the web.",
-  bio: [""],
+  tagline: "Backend and AI engineer building reliable services and safe LLM agents.",
+  bio: [
+    "I build backend systems and AI agents, mostly in TypeScript and Node.js. I care most about the parts that break in production: delivery guarantees, safety checks, and benchmarks that prove it works.",
+  ],
   email: "rajdeekshith2912@gmail.com",
   location: "India",
   avatar: "/Toji.jpeg", // null to hide

@@ -13,7 +13,7 @@ import type { Project } from "@/types/content";
  *   highlights). If none is featured and there is no experience, Home shows the first projects instead.
  * description and highlights support rich text: **bold** and [label](url).
  */
-// TODO: replace the placeholder links (yourhandle / your-demo-id / example.com) with the real URLs
+// TODO: replace the placeholder links (yourhandle / your-demo-id) with the real URLs
 export const projects = [
   {
     title: "Hookrelay",
