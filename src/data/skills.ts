@@ -17,4 +17,8 @@ export const skills = [
     group: "Frontend",
     items: ["React", "Next.js", "Zustand", "TanStack Query", "Redux Toolkit", "Tailwind CSS", "HTML", "CSS"],
   },
+  {
+    group: "CS Fundamentals",
+    items: ["Data Structures & Algorithms", "Object-Oriented Programming", "Operating Systems", "Computer Networks"],
+  },
 ] satisfies SkillGroup[];

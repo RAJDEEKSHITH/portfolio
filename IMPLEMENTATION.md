@@ -539,7 +539,7 @@ import type { Project } from "@/types/content";
  * Projects. Array order = display order.
  * Required: title, description. Optional: highlights[], tech[], links{github, youtube, live}, featured.
  * links: every key optional → icon links (GitHub · YouTube · Live, always in that order). Omit a key rather than
- *   leaving it "". The title links to live, else github, else youtube.
+ *   leaving it "". The title is plain text; only the icons link.
  * highlights: bullets on the Projects page (not on Home). 2–4 recommended. Lead with the result; at most ONE
  *   **bold** metric/outcome per bullet; not every bullet needs one; real numbers only.
  * featured: true → shown on Home (the first site.home.projectLimit), as a compact list row: title,
@@ -586,13 +586,12 @@ The placeholder data covers every case the layout has to handle:
 
 Projects have **no image and no year** (both removed after Step 17).
 
-**Shipped data (real-content pass, after Step 20):** `src/data/projects.ts` now holds the owner's 3 real projects (Hookrelay, DeployBench, Storiffy), all `featured`, 4 highlights each ordered by importance, and `src/data/experience.ts` is `[]` (zero-experience mode, §6.7). The sample above stays as the schema example. Their `links` are placeholders (`yourhandle` / `your-demo-id` / `example.com`, marked TODO in the file) until the owner pastes the real URLs.
+**Shipped data (real-content pass, after Step 20):** `src/data/projects.ts` now holds the owner's 4 real projects (Hookrelay, QueryCraft, DeployBench, Storiffy), all `featured`, 3–4 highlights each ordered by importance, and `src/data/experience.ts` is `[]` (zero-experience mode, §6.7). The sample above stays as the schema example. Their `links` are placeholders (`yourhandle` / `your-demo-id` / `example.com`, marked TODO in the file) until the owner pastes the real URLs.
 
 **`src/lib/projectLinks.ts`** (pure helpers):
 - `PROJECT_LINK_TYPES = ["github", "youtube", "live"] as const`, the fixed display order;
 - `PROJECT_LINK_LABELS`: GitHub / YouTube / Live site;
-- `getProjectLink(project, type)`: the URL, with blank strings treated as missing;
-- `getTitleHref(project)`: live ?? github ?? youtube.
+- `getProjectLink(project, type)`: the URL, with blank strings treated as missing.
 
 ### 3.7 `src/data/skills.ts`
 
@@ -1270,8 +1269,7 @@ A **list, not cards**, laid out exactly like the Experience page (§6.3).
 - **`ProjectHeader`** (`src/components/projects/ProjectHeader.tsx`) is the shared title row for `ProjectRow` (Home) and `ProjectItem`. Props: `project`, `headingAs?: "h2" | "h3"` (default `"h3"`).
   - The row is `flex items-start justify-between gap-3`.
   - **Left** is the title heading (item-title scale, `min-w-0 break-words`).
-    - The title links to `getTitleHref(project)` (live ?? github ?? youtube; `_blank`, `noopener noreferrer`, hover underline and focus ring).
-    - With no links, the title is plain text.
+    - The title is always plain text, never a link: the icons on the right carry every project link.
   - **Right** is `<ProjectLinks className="-my-1.5 sm:-my-1" />`. The negative margins centre the 36px icons on the first title line (24px, or 28px from `sm`) without making the row taller.
   - **The icons stay on the title row at 320px;** the title wraps beside them.
 - No images and no year anywhere: no `image`/`year` fields, no `public/projects/` folder, no hover zoom, no card border or equal-height grid.

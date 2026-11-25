@@ -13,15 +13,15 @@ import type { Site } from "@/types/content";
  */
 export const site = {
   name: "Rajdeekshith",
-  role: "Full-Stack Engineer",
+  role: "Backend & AI Engineer",
   tagline: "I build fast, thoughtful products for the web.",
-  bio: ["Short paragraph about you. Keep it to 2–3 sentences."],
+  bio: [""],
   email: "rajdeekshith2912@gmail.com",
-  location: "City, Country",
+  location: "India",
   avatar: "/Toji.jpeg", // null to hide
   url: "https://yourdomain.com",
   resume: {
-    driveUrl: "https://drive.google.com/file/d/17AymyEygpXDphkZ8cvz3ZORuqi6hEDQU/view?usp=drive_link",
+    driveUrl: "https://drive.google.com/file/d/1D4V_mfJQHYb6SxkwDHHM6TVfFj0-vKhW/view?usp=sharing",
     updated: "2026-11",
   },
   home: {

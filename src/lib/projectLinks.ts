@@ -14,7 +14,3 @@ export const getProjectLink = (project: Pick<Project, "links">, type: ProjectLin
   const url = project.links?.[type]?.trim();
   return url ? url : undefined;
 };
-
-/** Where the project title links: live, else github, else youtube. */
-export const getTitleHref = (project: Pick<Project, "links">): string | undefined =>
-  getProjectLink(project, "live") ?? getProjectLink(project, "github") ?? getProjectLink(project, "youtube");
